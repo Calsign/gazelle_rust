@@ -1,0 +1,11 @@
+[package]
+name = "rust_parser"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+syn = { version = "1.0", features = ["full", "visit", "extra-traits"] }
+clap = { version = "3.2", features = ["derive"] }
+
+[dev-dependencies]
+lazy_static = "1.4"

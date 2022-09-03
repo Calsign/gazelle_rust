@@ -1,0 +1,31 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+
+# gazelle:exclude test_data
+
+rust_library(
+    name = "rust_parser_lib",
+    srcs = ["src/lib.rs"],
+    crate_name = "rust_parser",
+    visibility = ["//visibility:private"],
+    deps = ["@crates//:syn"],
+)
+
+rust_binary(
+    name = "rust_parser",
+    srcs = ["src/main.rs"],
+    deps = [
+        ":rust_parser_lib",
+        "@crates//:clap",
+    ],
+)
+
+rust_test(
+    name = "parse_test",
+    srcs = ["tests/parse_test.rs"],
+    crate_features = ["bazel"],
+    data = glob(["test_data/*.rs"]),
+    deps = [
+        ":rust_parser_lib",
+        "@crates//:lazy_static",
+    ],
+)
