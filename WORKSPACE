@@ -47,7 +47,6 @@ http_archive(
 )
 
 load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_register_toolchains")
-load("@rules_rust//crate_universe:defs.bzl", "crates_repository")
 
 rules_rust_dependencies()
 
@@ -56,12 +55,9 @@ rust_register_toolchains(
     version = "1.63.0",
 )
 
-crates_repository(
-    name = "crates",
-    cargo_lockfile = "//rust_parser:Cargo.lock",
-    lockfile = "//rust_parser:Cargo.Bazel.lock",
-    manifests = ["//rust_parser:Cargo.toml"],
-)
+load("//:rust_deps.bzl", "rust_dependencies")
+
+rust_dependencies()
 
 load("@crates//:defs.bzl", "crate_repositories")
 

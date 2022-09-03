@@ -1,36 +1,30 @@
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
 
 # gazelle:exclude test_data
-# gazelle:exclude target
 
 rust_library(
     name = "rust_parser_lib",
-    srcs = ["src/lib.rs"],
+    srcs = ["lib.rs"],
     crate_name = "rust_parser",
-    visibility = ["//visibility:private"],
+    visibility = [":__subpackages__"],
     deps = ["@crates//:syn"],
 )
 
 rust_binary(
     name = "rust_parser",
-    srcs = ["src/main.rs"],
+    srcs = ["main.rs"],
     visibility = ["//visibility:public"],
     deps = [
         ":rust_parser_lib",
         "//proto:messages_rust_proto",
         "@crates//:clap",
-        "@rules_rust_proto__protobuf-2.8.2//:protobuf",
+        # NOTE: need to use the same protobuf used by rules_rust
+        "@rules_rust//proto/raze:protobuf",
     ],
 )
 
-rust_test(
-    name = "parse_test",
-    srcs = ["tests/parse_test.rs"],
-    crate_features = ["bazel"],
-    data = glob(["test_data/*.rs"]),
-    deps = [
-        ":rust_parser_lib",
-        "@crates//:lazy_static",
-        "@rules_rust//tools/runfiles",
-    ],
+filegroup(
+    name = "test_data",
+    srcs = glob(["test_data/*.rs"]),
+    visibility = [":__subpackages__"],
 )

@@ -1,5 +1,5 @@
 {
-  "checksum": "4fa82531d4ae19b6d1ec9528cb7e26bf06eaf809f89237cd91c39aaac2dc0ae8",
+  "checksum": "9c6ef6d8679278ce29fd48e967a1bf799de13313c467f313c8f309d18204e150",
   "crates": {
     "atty 0.2.14": {
       "name": "atty",
@@ -331,6 +331,51 @@
         "version": "0.2.4"
       },
       "license": "MIT OR Apache-2.0"
+    },
+    "direct-cargo-bazel-deps 0.0.1": {
+      "name": "direct-cargo-bazel-deps",
+      "version": "0.0.1",
+      "repository": null,
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "direct_cargo_bazel_deps",
+            "crate_root": ".direct_cargo_bazel_deps.rs",
+            "srcs": {
+              "include": [
+                "**/*.rs"
+              ],
+              "exclude": []
+            }
+          }
+        }
+      ],
+      "library_target_name": "direct_cargo_bazel_deps",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "clap 3.2.20",
+              "target": "clap"
+            },
+            {
+              "id": "lazy_static 1.4.0",
+              "target": "lazy_static"
+            },
+            {
+              "id": "syn 1.0.99",
+              "target": "syn"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2018",
+        "version": "0.0.1"
+      },
+      "license": null
     },
     "hashbrown 0.12.3": {
       "name": "hashbrown",
@@ -995,68 +1040,6 @@
       },
       "license": "MIT OR Apache-2.0"
     },
-    "rust_parser 0.1.0": {
-      "name": "rust_parser",
-      "version": "0.1.0",
-      "repository": null,
-      "targets": [
-        {
-          "Library": {
-            "crate_name": "rust_parser",
-            "crate_root": "src/lib.rs",
-            "srcs": {
-              "include": [
-                "**/*.rs"
-              ],
-              "exclude": []
-            }
-          }
-        },
-        {
-          "Binary": {
-            "crate_name": "rust_parser",
-            "crate_root": "src/main.rs",
-            "srcs": {
-              "include": [
-                "**/*.rs"
-              ],
-              "exclude": []
-            }
-          }
-        }
-      ],
-      "library_target_name": "rust_parser",
-      "common_attrs": {
-        "compile_data_glob": [
-          "**"
-        ],
-        "deps": {
-          "common": [
-            {
-              "id": "clap 3.2.20",
-              "target": "clap"
-            },
-            {
-              "id": "syn 1.0.99",
-              "target": "syn"
-            }
-          ],
-          "selects": {}
-        },
-        "deps_dev": {
-          "common": [
-            {
-              "id": "lazy_static 1.4.0",
-              "target": "lazy_static"
-            }
-          ],
-          "selects": {}
-        },
-        "edition": "2021",
-        "version": "0.1.0"
-      },
-      "license": null
-    },
     "strsim 0.10.0": {
       "name": "strsim",
       "version": "0.10.0",
@@ -1568,7 +1551,7 @@
     "clap 3.2.20"
   ],
   "workspace_members": {
-    "rust_parser 0.1.0": "rust_parser"
+    "direct-cargo-bazel-deps 0.0.1": ""
   },
   "conditions": {
     "cfg(target_os = \"hermit\")": [],
