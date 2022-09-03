@@ -1,6 +1,7 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 
 # gazelle:exclude test_data
+# gazelle:exclude target
 
 rust_library(
     name = "rust_parser_lib",
@@ -13,9 +14,12 @@ rust_library(
 rust_binary(
     name = "rust_parser",
     srcs = ["src/main.rs"],
+    visibility = ["//visibility:public"],
     deps = [
         ":rust_parser_lib",
+        "//proto:messages_rust_proto",
         "@crates//:clap",
+        "@rules_rust_proto__protobuf-2.8.2//:protobuf",
     ],
 )
 
@@ -27,5 +31,6 @@ rust_test(
     deps = [
         ":rust_parser_lib",
         "@crates//:lazy_static",
+        "@rules_rust//tools/runfiles",
     ],
 )

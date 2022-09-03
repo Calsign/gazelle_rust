@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+message RustImportsRequest {
+    string file_path = 1;
+}
+
+message RustImportsResponse {
+    repeated string imports = 1;
+}

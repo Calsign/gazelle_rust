@@ -5,16 +5,22 @@ go_library(
     srcs = [
         "generate.go",
         "lang.go",
+        "parser.go",
         "resolve.go",
     ],
+    data = ["//rust_parser"],
     importpath = "github.com/calsign/gazelle_rust/rust_language",
     visibility = ["//visibility:public"],
     deps = [
+        "//proto:messages_go",
         "@bazel_gazelle//config:go_default_library",
         "@bazel_gazelle//label:go_default_library",
         "@bazel_gazelle//language:go_default_library",
         "@bazel_gazelle//repo:go_default_library",
         "@bazel_gazelle//resolve:go_default_library",
         "@bazel_gazelle//rule:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@org_golang_google_protobuf//encoding/protowire:go_default_library",
+        "@org_golang_google_protobuf//proto:go_default_library",
     ],
 )

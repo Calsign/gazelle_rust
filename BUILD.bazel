@@ -1,5 +1,7 @@
 load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 
+# gazelle:exclude build
+
 gazelle_binary(
     name = "gazelle_bin",
     languages = ["//rust_language"],
@@ -10,6 +12,7 @@ gazelle(
     gazelle = ":gazelle_bin",
 )
 
+# gazelle:prefix github.com/calsign/gazelle_rust
 gazelle(name = "gazelle_bootstrap")
 
 gazelle(

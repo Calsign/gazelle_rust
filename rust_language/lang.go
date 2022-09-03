@@ -8,10 +8,12 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-type rustLang struct{}
+type rustLang struct {
+	Parser *Parser
+}
 
 func NewLanguage() language.Language {
-	return &rustLang{}
+	return &rustLang{Parser: NewParser()}
 }
 
 func (*rustLang) Name() string { return "rust" }

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::error::Error;
 use std::path::PathBuf;
@@ -17,20 +18,48 @@ lazy_static::lazy_static! {
                 "test_use_2",
                 "test_use_3",
                 "test_use_4",
+                "test_use_5",
                 "test_duplicate",
                 "test_inner_1",
                 "test_args_1",
                 "test_ret_1",
                 "test_inner_2",
+                "test_inner_mod_2",
+                "test_inner_mod_3",
             ],
         },
     ];
 }
 
+fn assert_eq_vecs(actual: &Vec<String>, expected: &Vec<String>) {
+    let actual_set: HashSet<_> = actual.iter().collect();
+    let expected_set: HashSet<_> = expected.iter().collect();
+    if actual_set != expected_set {
+        let mut only_actual: Vec<_> = actual_set.difference(&expected_set).collect();
+        only_actual.sort();
+        let mut only_expected: Vec<_> = expected_set.difference(&actual_set).collect();
+        only_expected.sort();
+
+        if !only_actual.is_empty() {
+            println!("Only in actual:");
+            for item in only_actual {
+                println!("  {}", item);
+            }
+        }
+        if !only_expected.is_empty() {
+            println!("Only in expected:");
+            for item in only_expected {
+                println!("  {}", item);
+            }
+        }
+        panic!("vecs differ");
+    }
+}
+
 #[test]
 fn parse_test() -> Result<(), Box<dyn Error>> {
     let dir = if cfg!(feature = "bazel") {
-        let mut d = PathBuf::from(env::var("RUNFILES_DIR")?);
+        let mut d = runfiles::find_runfiles_dir()?;
         d.push("gazelle_rust/rust_parser/test_data");
         d
     } else {
@@ -43,14 +72,15 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
         let mut file = dir.clone();
         file.push(test_case.filename);
 
-        println!("{:?}", file);
-
-        let mut imports = rust_parser::parse_imports(file)?;
-        imports.sort();
-        let mut expected = test_case.expected_imports.clone();
-        expected.sort();
-
-        assert_eq!(imports, expected);
+        let imports = rust_parser::parse_imports(file)?;
+        assert_eq_vecs(
+            &imports,
+            &test_case
+                .expected_imports
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        );
     }
 
     Ok(())
