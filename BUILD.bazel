@@ -1,10 +1,15 @@
 load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 
-# gazelle:rust_lockfile cargo.bazel.lock
-# gazelle:rust_crates_prefix @gazelle_rust_crates//:
-
 # gazelle:exclude build
 # gazelle:exclude example
+
+# gazelle:rust_cargo_lockfile cargo.lock
+# gazelle:rust_crates_prefix //3rdparty/crates:
+
+exports_files(
+    srcs = ["cargo.lock"],
+    visibility = ["//visibility:public"],
+)
 
 gazelle_binary(
     name = "gazelle_bin",

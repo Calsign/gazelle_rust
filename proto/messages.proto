@@ -16,10 +16,18 @@ message RustImportsResponse {
 }
 
 message LockfileCratesRequest {
-    string lockfile_path = 1;
+    oneof lockfile {
+        string lockfile_path = 1;
+        string cargo_lockfile_path = 2;
+    }
+}
+
+message Package {
+    string name = 1;
+    string crate_name = 2;
+    bool proc_macro = 3;
 }
 
 message LockfileCratesResponse {
-    repeated string crates = 1;
-    repeated string proc_macro_crates = 2;
+    repeated Package crates = 1;
 }

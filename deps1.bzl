@@ -5,7 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//:go_deps.bzl", "go_dependencies")
 
 # rust dependencies
-load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_repository")
+load("//3rdparty/crates:crates.bzl", "crate_repositories")
 
 # build crate_universe
 load("@rules_rust//crate_universe:repositories.bzl", "crate_universe_dependencies")
@@ -32,9 +32,6 @@ def gazelle_rust_dependencies1():
         ],
     )
 
-    # go dependencies
-    go_dependencies()
-
     # protobuf
     maybe(
         http_archive,
@@ -46,25 +43,11 @@ def gazelle_rust_dependencies1():
         ],
     )
 
+    # go dependencies
+    go_dependencies()
+
     # rust dependencies
-    crates_repository(
-        name = "gazelle_rust_crates",
-        lockfile = "@gazelle_rust//:cargo.bazel.lock",
-        cargo_lockfile = "@gazelle_rust//:cargo.lock",
-        packages = {
-            "syn": crate.spec(
-                version = "1.0",
-                features = ["full", "visit", "extra-traits"],
-            ),
-            "clap": crate.spec(
-                version = "3.2",
-                features = ["derive"],
-            ),
-            "lazy_static": crate.spec(
-                version = "1.4",
-            ),
-        },
-    )
+    crate_repositories()
 
     # build crate universe
     crate_universe_dependencies()

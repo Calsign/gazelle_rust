@@ -6,7 +6,7 @@ rust_library(
     name = "parser",
     srcs = ["parser.rs"],
     visibility = [":__subpackages__"],
-    deps = ["@gazelle_rust_crates//:syn"],
+    deps = ["//3rdparty/crates:syn"],
 )
 
 rust_library(
@@ -14,6 +14,8 @@ rust_library(
     srcs = ["lockfile_crates.rs"],
     visibility = [":__subpackages__"],
     deps = [
+        "//3rdparty/crates:cargo-lock",
+        "//proto:messages_rust_proto",
         "@rules_rust//crate_universe:cargo_bazel",
         "@rules_rust//crate_universe/3rdparty/crates:serde_json",
     ],
@@ -26,8 +28,8 @@ rust_binary(
     deps = [
         ":lockfile_crates",
         ":parser",
+        "//3rdparty/crates:clap",
         "//proto:messages_rust_proto",
-        "@gazelle_rust_crates//:clap",
         "@rules_rust//proto/raze:protobuf",
     ],
 )

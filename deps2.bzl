@@ -7,9 +7,6 @@ load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_regi
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
 load("@rules_rust//proto:repositories.bzl", "rust_proto_repositories")
 
-# rust dependencies
-load("@gazelle_rust_crates//:defs.bzl", "crate_repositories")
-
 def gazelle_rust_dependencies2():
     # go/gazelle
     go_rules_dependencies()
@@ -24,6 +21,3 @@ def gazelle_rust_dependencies2():
     rules_proto_toolchains()
 
     rust_proto_repositories()
-
-    # rust dependencies
-    crate_repositories()

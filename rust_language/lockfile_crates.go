@@ -9,32 +9,46 @@ import (
 )
 
 type LockfileCrates struct {
-	Crates map[resolve.ImportSpec]bool
+	Crates map[resolve.ImportSpec]string
 }
 
 func EmptyLockfileCrates() *LockfileCrates {
 	return &LockfileCrates{
-		Crates: make(map[resolve.ImportSpec]bool),
+		Crates: make(map[resolve.ImportSpec]string),
 	}
 }
 
-func NewLockfileCrates(p *Parser, lockfilePath string) *LockfileCrates {
+func NewLockfileCrates(p *Parser, lockfilePath string, cargo bool) *LockfileCrates {
 	lockfileCrates := EmptyLockfileCrates()
 
-	request := &pb.LockfileCratesRequest{LockfilePath: lockfilePath}
+	var request *pb.LockfileCratesRequest
+	if cargo {
+		request = &pb.LockfileCratesRequest{
+			Lockfile: &pb.LockfileCratesRequest_CargoLockfilePath{
+				CargoLockfilePath: lockfilePath,
+			},
+		}
+	} else {
+		request = &pb.LockfileCratesRequest{
+			Lockfile: &pb.LockfileCratesRequest_LockfilePath{
+				LockfilePath: lockfilePath,
+			},
+		}
+	}
+
 	response, err := p.GetLockfileCrates(request)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, crate := range response.Crates {
+		// TODO: support proc_macros
 		spec := resolve.ImportSpec{
 			Lang: langName,
-			Imp:  crate,
+			Imp:  crate.CrateName,
 		}
-		lockfileCrates.Crates[spec] = true
+		lockfileCrates.Crates[spec] = crate.Name
 	}
-	// TODO: proc macro crates
 
 	return lockfileCrates
 }

@@ -9,8 +9,8 @@ use clap::Parser;
 use protobuf::{CodedInputStream, CodedOutputStream, RepeatedField};
 
 use messages_rust_proto::{
-    LockfileCratesRequest, LockfileCratesResponse, Request, Request_oneof_kind, RustImportsRequest,
-    RustImportsResponse,
+    LockfileCratesRequest, LockfileCratesRequest_oneof_lockfile, LockfileCratesResponse, Request,
+    Request_oneof_kind, RustImportsRequest, RustImportsResponse,
 };
 
 #[derive(clap::Parser)]
@@ -33,7 +33,14 @@ fn handle_rust_imports_request(
 fn handle_lockfile_crates_request(
     request: LockfileCratesRequest,
 ) -> Result<LockfileCratesResponse, Box<dyn Error>> {
-    let crates = lockfile_crates::get_lockfile_crates(PathBuf::from(request.lockfile_path))?;
+    let crates = match request.lockfile.unwrap() {
+        LockfileCratesRequest_oneof_lockfile::lockfile_path(path) => {
+            lockfile_crates::get_bazel_lockfile_crates(PathBuf::from(path))?
+        }
+        LockfileCratesRequest_oneof_lockfile::cargo_lockfile_path(path) => {
+            lockfile_crates::get_cargo_lockfile_crates(PathBuf::from(path))?
+        }
+    };
 
     let mut response = LockfileCratesResponse::default();
     response.crates = RepeatedField::from_vec(crates);

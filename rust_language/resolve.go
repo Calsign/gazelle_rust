@@ -80,9 +80,9 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 					continue
 				} else if override, ok := resolve.FindRuleWithOverride(c, spec, l.Name()); ok {
 					selected = override
-				} else if _, ok := cfg.LockfileCrates.Crates[spec]; ok {
+				} else if crateName, ok := cfg.LockfileCrates.Crates[spec]; ok {
 					var err error
-					selected, err = label.Parse(cfg.CratesPrefix + imp)
+					selected, err = label.Parse(cfg.CratesPrefix + crateName)
 					if err != nil {
 						log.Fatal(err)
 					}

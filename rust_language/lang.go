@@ -10,13 +10,13 @@ import (
 )
 
 var (
-	langName              string = "rust"
-	lockfileDirective     string = "rust_lockfile"
-	cratesPrefixDirective string = "rust_crates_prefix"
+	langName               string = "rust"
+	lockfileDirective      string = "rust_lockfile"
+	cargoLockfileDirective string = "rust_cargo_lockfile"
+	cratesPrefixDirective  string = "rust_crates_prefix"
 )
 
 type rustConfig struct {
-	Lockfile       string
 	LockfileCrates *LockfileCrates
 	CratesPrefix   string
 }
@@ -85,7 +85,7 @@ func (*rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 }
 
 func (*rustLang) KnownDirectives() []string {
-	return []string{lockfileDirective, cratesPrefixDirective}
+	return []string{lockfileDirective, cargoLockfileDirective, cratesPrefixDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
@@ -103,8 +103,11 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 	if f != nil {
 		for _, directive := range f.Directives {
 			if directive.Key == lockfileDirective {
-				cfg.Lockfile = path.Join(c.RepoRoot, rel, directive.Value)
-				cfg.LockfileCrates = NewLockfileCrates(l.Parser, cfg.Lockfile)
+				lockfile := path.Join(c.RepoRoot, rel, directive.Value)
+				cfg.LockfileCrates = NewLockfileCrates(l.Parser, lockfile, false)
+			} else if directive.Key == cargoLockfileDirective {
+				lockfile := path.Join(c.RepoRoot, rel, directive.Value)
+				cfg.LockfileCrates = NewLockfileCrates(l.Parser, lockfile, true)
 			} else if directive.Key == cratesPrefixDirective {
 				cfg.CratesPrefix = directive.Value
 			}
