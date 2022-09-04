@@ -68,8 +68,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let mut writer2 = std::io::stdout();
             let mut stdout = CodedOutputStream::new(&mut writer);
 
-            const MAX_MSG_SIZE: usize = 4096;
-            let mut buf: [u8; MAX_MSG_SIZE] = [0; MAX_MSG_SIZE];
+            let mut buf: Vec<u8> = vec![0; 1024];
             const SF32: usize = std::mem::size_of::<u32>();
 
             loop {
@@ -81,12 +80,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                     res => res?,
                 }
                 let size = CodedInputStream::from_bytes(&buf[..SF32]).read_uint32()? as usize;
-                assert!(
-                    size < MAX_MSG_SIZE,
-                    "message size {} exceeds max message size {}",
-                    size,
-                    MAX_MSG_SIZE
-                );
+                if size > buf.len() {
+                    // grow buffer as needed
+                    buf = vec![0; size];
+                }
 
                 stdin.read_exact(&mut buf[..size])?;
                 let request: Request = protobuf::parse_from_bytes(&buf[..size])?;

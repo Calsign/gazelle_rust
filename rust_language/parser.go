@@ -47,9 +47,7 @@ func NewParser() *Parser {
 	}
 }
 
-const maxMsgSize uint32 = 4096
-
-var buf []byte = make([]byte, maxMsgSize)
+var buf []byte = make([]byte, 1024)
 var sf32 int = protowire.SizeFixed32()
 
 func (p *Parser) WriteRequest(request *pb.Request) error {
@@ -79,9 +77,9 @@ func ReadResponse[M proto.Message](p *Parser, response M) error {
 	if n != sf32 {
 		log.Fatal("n: %v\n", n)
 	}
-	if size > maxMsgSize {
-		return errors.New(fmt.Sprintf(
-			"message size %d exceeds max message size %d", size, maxMsgSize))
+	if size > uint32(len(buf)) {
+		// grow buffer as neeeded
+		buf = make([]byte, size)
 	}
 	n, err = p.stdout.Read(buf[:size])
 	if err != nil {
