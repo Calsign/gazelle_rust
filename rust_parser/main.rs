@@ -22,10 +22,11 @@ enum Args {
 fn handle_rust_imports_request(
     request: RustImportsRequest,
 ) -> Result<RustImportsResponse, Box<dyn Error>> {
-    let imports = parser::parse_imports(PathBuf::from(request.file_path))?;
+    let (imports, hints) = parser::parse_imports(PathBuf::from(request.file_path))?;
 
     let mut response = RustImportsResponse::default();
     response.imports = RepeatedField::from_vec(imports);
+    response.set_hints(hints);
 
     Ok(response)
 }
@@ -53,7 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match args {
         Args::OneShot { path } => {
-            let mut imports = parser::parse_imports(path)?;
+            let (mut imports, _) = parser::parse_imports(path)?;
             imports.sort();
 
             println!("Imports:");

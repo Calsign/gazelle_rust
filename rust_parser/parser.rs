@@ -9,7 +9,9 @@ use std::path::PathBuf;
 use syn::parse_file;
 use syn::visit::{self, Visit};
 
-pub fn parse_imports(file: PathBuf) -> Result<Vec<String>, Box<dyn Error>> {
+use messages_rust_proto::Hints;
+
+pub fn parse_imports(file: PathBuf) -> Result<(Vec<String>, Hints), Box<dyn Error>> {
     // TODO: stream from the file instead of loading it all into memory
     let mut file = File::open(file)?;
     let mut content = String::new();
@@ -34,7 +36,7 @@ pub fn parse_imports(file: PathBuf) -> Result<Vec<String>, Box<dyn Error>> {
         })
         .collect();
 
-    Ok(imports)
+    Ok((imports, visitor.hints))
 }
 
 #[derive(Debug)]
@@ -42,6 +44,7 @@ struct AstVisitor<'ast> {
     imports: HashSet<&'ast syn::Ident>,
     mod_stack: VecDeque<Vec<&'ast syn::Ident>>,
     scope_mods: HashSet<&'ast syn::Ident>,
+    hints: Hints,
 }
 
 impl<'ast> Default for AstVisitor<'ast> {
@@ -52,6 +55,7 @@ impl<'ast> Default for AstVisitor<'ast> {
             imports: HashSet::default(),
             mod_stack,
             scope_mods: HashSet::default(),
+            hints: Hints::default(),
         }
     }
 }
@@ -79,6 +83,10 @@ impl<'ast> AstVisitor<'ast> {
         for rename in self.mod_stack.pop_back().expect("hit bottom of stack") {
             self.scope_mods.remove(rename);
         }
+    }
+
+    fn is_root_scope(&self) -> bool {
+        self.mod_stack.len() == 1
     }
 }
 
@@ -140,5 +148,25 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         self.push_scope();
         visit::visit_item_mod(self, node);
         self.pop_scope();
+    }
+
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        if self.is_root_scope() && node.sig.ident.to_string() == "main" {
+            // main function in the top-level scope
+            self.hints.has_main = true;
+        } else {
+            for attr in &node.attrs {
+                if attr.style == syn::AttrStyle::Outer && attr.path.segments.len() == 1 {
+                    let name = attr.path.segments[0].ident.to_string();
+                    if name == "test" {
+                        self.hints.has_test = true;
+                    } else if name == "proc_macro" {
+                        self.hints.has_proc_macro = true;
+                    }
+                }
+            }
+        }
+
+        visit::visit_item_fn(self, node);
     }
 }

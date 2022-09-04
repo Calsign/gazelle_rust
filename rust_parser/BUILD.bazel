@@ -6,7 +6,10 @@ rust_library(
     name = "parser",
     srcs = ["parser.rs"],
     visibility = [":__subpackages__"],
-    deps = ["//3rdparty/crates:syn"],
+    deps = [
+        "//3rdparty/crates:syn",
+        "//proto:messages_rust_proto",
+    ],
 )
 
 rust_library(

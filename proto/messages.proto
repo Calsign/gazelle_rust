@@ -11,8 +11,20 @@ message RustImportsRequest {
     string file_path = 1;
 }
 
+/** Extra information about the source file, used to infer rule kind (e.g. binary vs. library) when
+    creating new targets and to manage crate test targets. */
+message Hints {
+    /** Has a main function in the top-level scope. */
+    bool has_main = 1;
+    /** Has at least one #[test] function. */
+    bool has_test = 2;
+    /** Has at least one #[proc_macro] function. */
+    bool has_proc_macro = 3;
+}
+
 message RustImportsResponse {
     repeated string imports = 1;
+    Hints hints = 2;
 }
 
 message LockfileCratesRequest {

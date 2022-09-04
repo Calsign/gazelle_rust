@@ -3,6 +3,7 @@ package rust_language
 import (
 	"log"
 	"sort"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
@@ -139,7 +140,11 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 		if len(candidates) == 1 {
 			return &candidates[0].Label, true
 		} else {
-			log.Printf("multiple matches found for %s: %v\n", spec.Imp, candidates)
+			candidateLabels := []string{}
+			for _, candidate := range candidates {
+				candidateLabels = append(candidateLabels, candidate.Label.String())
+			}
+			log.Printf("multiple matches found for %s: [%s]\n", spec.Imp, strings.Join(candidateLabels, ", "))
 			return nil, true
 		}
 	} else if override, ok := provided[spec.Imp]; ok {
