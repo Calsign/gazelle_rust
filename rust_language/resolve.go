@@ -14,12 +14,21 @@ import (
 )
 
 var builtins = map[string]bool{
-	"std":  true,
-	"core": true,
+	"std":        true,
+	"core":       true,
+	"proc_macro": true,
 }
 
 var provided = map[string]label.Label{
 	"runfiles": label.New("rules_rust", "tools/runfiles", "runfiles"),
+}
+
+func getCrateName(r *rule.Rule) string {
+	crateName := r.AttrString("crate_name")
+	if crateName == "" {
+		crateName = r.Name()
+	}
+	return crateName
 }
 
 func (l *rustLang) Imports(c *config.Config, r *rule.Rule,
@@ -29,13 +38,14 @@ func (l *rustLang) Imports(c *config.Config, r *rule.Rule,
 
 	switch r.Kind() {
 	case "rust_library":
-		crateName := r.AttrString("crate_name")
-		if crateName == "" {
-			crateName = r.Name()
-		}
 		specs = append(specs, resolve.ImportSpec{
 			Lang: l.Name(),
-			Imp:  crateName,
+			Imp:  getCrateName(r),
+		})
+	case "rust_proc_macro":
+		specs = append(specs, resolve.ImportSpec{
+			Lang: procMacroLangName,
+			Imp:  getCrateName(r),
 		})
 	case "rust_proto_library", "rust_grpc_library":
 		specs = append(specs, resolve.ImportSpec{
@@ -63,48 +73,80 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 	cfg := l.GetConfig(c)
 
 	switch r.Kind() {
-	case "rust_library", "rust_binary", "rust_test":
+	case "rust_library", "rust_binary", "rust_test", "rust_proc_macro":
 		files := imports.([]*pb.RustImportsResponse)
 		deps := map[label.Label]bool{}
+		procMacroDeps := map[label.Label]bool{}
 
 		for _, response := range files {
 			for _, imp := range response.GetImports() {
-				spec := resolve.ImportSpec{
-					Lang: l.Name(),
-					Imp:  imp,
+				is_proc_macro := false
+
+				label, found := l.resolveCrate(cfg, c, ix, l.Name(), imp)
+				if label != nil {
+					is_proc_macro = false
+				}
+				if !found {
+					label, found = l.resolveCrate(cfg, c, ix, procMacroLangName, imp)
+					if label != nil {
+						is_proc_macro = true
+					}
 				}
 
-				var selected label.Label
+				if proc_macro, ok := cfg.ProcMacroOverrides[imp]; ok {
+					// user-defined override
+					// NOTE: well-known overrides are handled in lockfile_crates.go
+					is_proc_macro = proc_macro
+				}
 
-				if builtins[imp] {
-					continue
-				} else if override, ok := resolve.FindRuleWithOverride(c, spec, l.Name()); ok {
-					selected = override
-				} else if crateName, ok := cfg.LockfileCrates.Crates[spec]; ok {
-					var err error
-					selected, err = label.Parse(cfg.CratesPrefix + crateName)
-					if err != nil {
-						log.Fatal(err)
+				if found {
+					if label != nil {
+						if is_proc_macro {
+							procMacroDeps[*label] = true
+						} else {
+							deps[*label] = true
+						}
 					}
-				} else if candidates := ix.FindRulesByImportWithConfig(c, spec, l.Name()); len(candidates) >= 1 {
-					if len(candidates) == 1 {
-						selected = candidates[0].Label
-					} else {
-						log.Printf("multiple matches found for %s: %v\n", imp, candidates)
-						continue
-					}
-				} else if override, ok := provided[imp]; ok {
-					selected = override
 				} else {
 					log.Printf("no match for %s\n", imp)
-					continue
 				}
-
-				deps[selected] = true
 			}
 		}
 
 		r.SetAttr("deps", finalizeDeps(deps, from))
+		r.SetAttr("proc_macro_deps", finalizeDeps(procMacroDeps, from))
+	}
+}
+
+func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.RuleIndex,
+	lang string, imp string) (*label.Label, bool) {
+	spec := resolve.ImportSpec{
+		Lang: lang,
+		Imp:  imp,
+	}
+
+	if builtins[spec.Imp] {
+		return nil, true
+	} else if override, ok := resolve.FindRuleWithOverride(c, spec, l.Name()); ok {
+		return &override, true
+	} else if crateName, ok := cfg.LockfileCrates.Crates[spec]; ok {
+		var err error
+		label, err := label.Parse(cfg.CratesPrefix + crateName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return &label, true
+	} else if candidates := ix.FindRulesByImportWithConfig(c, spec, l.Name()); len(candidates) >= 1 {
+		if len(candidates) == 1 {
+			return &candidates[0].Label, true
+		} else {
+			log.Printf("multiple matches found for %s: %v\n", spec.Imp, candidates)
+			return nil, true
+		}
+	} else if override, ok := provided[spec.Imp]; ok {
+		return &override, true
+	} else {
+		return nil, false
 	}
 }
 

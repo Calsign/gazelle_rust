@@ -1,4 +1,4 @@
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_proc_macro")
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # Tell gazelle_rust where crate_universe dependencies come from.
@@ -26,8 +26,16 @@ rust_library(
 rust_binary(
     name = "main",
     srcs = ["main.rs"],
+    proc_macro_deps = [":macro_lib"],
     deps = [
         ":lib",
         "@crates//:clap",
     ],
+)
+
+# proc_macro crates are handled correctly.
+rust_proc_macro(
+    name = "macro_lib",
+    srcs = ["macro_lib.rs"],
+    deps = [":lib"],
 )

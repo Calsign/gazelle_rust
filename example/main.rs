@@ -5,6 +5,8 @@ struct Args {
     message: Option<String>,
 }
 
+macro_lib::macro_msg!();
+
 fn main() {
     let args = Args::parse();
 
