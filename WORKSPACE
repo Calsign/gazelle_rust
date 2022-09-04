@@ -24,10 +24,6 @@ http_archive(
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-load("//:go_deps.bzl", "go_dependencies")
-
-# gazelle:repository_macro go_deps.bzl%go_dependencies
-go_dependencies()
 
 go_rules_dependencies()
 
@@ -37,11 +33,8 @@ gazelle_dependencies()
 
 # Rust
 
-RUST_VERSION = "1.63.0"
-
 http_archive(
     name = "rules_rust",
-    patch_args = ["-p1"],
     patches = ["//patches:rules_rust.patch"],
     sha256 = "6bfe75125e74155955d8a9854a8811365e6c0f3d33ed700bc17f39e32522c822",
     urls = [
@@ -56,41 +49,17 @@ rules_rust_dependencies()
 
 rust_register_toolchains(
     edition = "2021",
-    version = RUST_VERSION,
+    version = "1.63.0",
 )
 
-load("//:rust_deps.bzl", "rust_dependencies")
+# gazelle_rust dependencies
 
-rust_dependencies()
+load("//:deps1.bzl", "gazelle_rust_dependencies1")
 
-load("@crates//:defs.bzl", "crate_repositories")
+gazelle_rust_dependencies1()
 
-crate_repositories()
+load("//:deps2.bzl", "gazelle_rust_dependencies2")
 
-load("@rules_rust//crate_universe:repositories.bzl", "crate_universe_dependencies")
+gazelle_rust_dependencies2()
 
-crate_universe_dependencies()
-
-# Protobuf
-
-http_archive(
-    name = "rules_proto",
-    sha256 = "e017528fd1c91c5a33f15493e3a398181a9e821a804eb7ff5acdd1d2d6c2b18d",
-    strip_prefix = "rules_proto-4.0.0-3.20.0",
-    urls = [
-        "https://github.com/bazelbuild/rules_proto/archive/refs/tags/4.0.0-3.20.0.tar.gz",
-    ],
-)
-
-load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
-
-rules_proto_dependencies()
-
-rules_proto_toolchains()
-
-load("@rules_rust//proto:repositories.bzl", "rust_proto_repositories")
-load("@rules_rust//proto:transitive_repositories.bzl", "rust_proto_transitive_repositories")
-
-rust_proto_repositories()
-
-rust_proto_transitive_repositories()
+# gazelle:repository_macro go_deps.bzl%go_dependencies

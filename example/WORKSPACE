@@ -1,0 +1,60 @@
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+# Load gazelle_rust. In a real project, this would use http_archive. Must come before rules_rust so
+# that the patch can be applied.
+
+local_repository(
+    name = "gazelle_rust",
+    path = "..",
+)
+
+http_archive(
+    name = "rules_rust",
+    # NOTE: This patch is currently necessary for gazelle_rust to parse crate_universe lockfiles.
+    patches = ["@gazelle_rust//patches:rules_rust.patch"],
+    sha256 = "6bfe75125e74155955d8a9854a8811365e6c0f3d33ed700bc17f39e32522c822",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_rust/releases/download/0.9.0/rules_rust-v0.9.0.tar.gz",
+        "https://github.com/bazelbuild/rules_rust/releases/download/0.9.0/rules_rust-v0.9.0.tar.gz",
+    ],
+)
+
+load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_register_toolchains")
+
+rules_rust_dependencies()
+
+rust_register_toolchains(
+    edition = "2021",
+    version = "1.63.0",
+)
+
+load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_repository")
+
+# Example of using crate_universe. For gazelle_rust to work correctly with crate_universe
+# dependencies, this must be paired with two gazelle directives; see BUILD.bazel.
+crates_repository(
+    name = "crates",
+    cargo_lockfile = "//:cargo.lock",
+    lockfile = "//:cargo.bazel.lock",
+    packages = {
+        "clap": crate.spec(
+            features = ["derive"],
+            version = "3.2",
+        ),
+    },
+)
+
+load("@crates//:defs.bzl", "crate_repositories")
+
+crate_repositories()
+
+# Load gazelle_rust transitive dependencies (includes gazelle). You can also load gazelle yourself,
+# before these macros.
+
+load("@gazelle_rust//:deps1.bzl", "gazelle_rust_dependencies1")
+
+gazelle_rust_dependencies1()
+
+load("@gazelle_rust//:deps2.bzl", "gazelle_rust_dependencies2")
+
+gazelle_rust_dependencies2()

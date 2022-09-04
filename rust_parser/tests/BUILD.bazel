@@ -7,7 +7,7 @@ rust_test(
     data = ["//rust_parser:test_data"],
     deps = [
         "//rust_parser:parser",
-        "@crates//:lazy_static",
+        "@gazelle_rust_crates//:lazy_static",
         "@rules_rust//tools/runfiles",
     ],
 )

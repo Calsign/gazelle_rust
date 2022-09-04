@@ -84,8 +84,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 stdin.read_exact(&mut buf[..size])?;
                 let request: Request = protobuf::parse_from_bytes(&buf[..size])?;
 
-                let response: Box<dyn protobuf::Message> =
-                    match request.kind.expect("missing request kind") {
+                if let Some(kind) = request.kind {
+                    let response: Box<dyn protobuf::Message> = match kind {
                         Request_oneof_kind::rust_imports(request) => {
                             Box::new(handle_rust_imports_request(request)?)
                         }
@@ -94,11 +94,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                         }
                     };
 
-                stdout.write_fixed32_no_tag(response.compute_size())?;
-                response.write_to(&mut stdout)?;
-                stdout.flush()?;
-                // need to flush the underlying stdout because protobuf doesn't do that for us
-                writer2.flush()?;
+                    stdout.write_fixed32_no_tag(response.compute_size())?;
+                    response.write_to(&mut stdout)?;
+                    stdout.flush()?;
+                    // need to flush the underlying stdout because protobuf doesn't do that for us
+                    writer2.flush()?;
+                }
             }
         }
     }

@@ -12,10 +12,14 @@ type LockfileCrates struct {
 	Crates map[resolve.ImportSpec]bool
 }
 
-func NewLockfileCrates(p *Parser, lockfilePath string) *LockfileCrates {
-	lockfileCrates := &LockfileCrates{
+func EmptyLockfileCrates() *LockfileCrates {
+	return &LockfileCrates{
 		Crates: make(map[resolve.ImportSpec]bool),
 	}
+}
+
+func NewLockfileCrates(p *Parser, lockfilePath string) *LockfileCrates {
+	lockfileCrates := EmptyLockfileCrates()
 
 	request := &pb.LockfileCratesRequest{LockfilePath: lockfilePath}
 	response, err := p.GetLockfileCrates(request)

@@ -1,13 +1,15 @@
 load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 
 # gazelle:rust_lockfile cargo.bazel.lock
-# gazelle:rust_crates_prefix @crates//:
+# gazelle:rust_crates_prefix @gazelle_rust_crates//:
 
 # gazelle:exclude build
+# gazelle:exclude example
 
 gazelle_binary(
     name = "gazelle_bin",
     languages = ["//rust_language"],
+    visibility = ["//visibility:public"],
 )
 
 gazelle(

@@ -6,7 +6,7 @@ rust_library(
     name = "parser",
     srcs = ["parser.rs"],
     visibility = [":__subpackages__"],
-    deps = ["@crates//:syn"],
+    deps = ["@gazelle_rust_crates//:syn"],
 )
 
 rust_library(
@@ -27,7 +27,7 @@ rust_binary(
         ":lockfile_crates",
         ":parser",
         "//proto:messages_rust_proto",
-        "@crates//:clap",
+        "@gazelle_rust_crates//:clap",
         "@rules_rust//proto/raze:protobuf",
     ],
 )

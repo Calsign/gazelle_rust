@@ -1,5 +1,5 @@
 {
-  "checksum": "1ea5fe828a05ab04462b3f5fbf308d459601506778c4499a1de1e47bb1fd5148",
+  "checksum": "fcebd14c94fdafffe35ade0e6b5ad4951f58583c47c390fb4d85ffacfb08ae76",
   "crates": {
     "atty 0.2.14": {
       "name": "atty",
@@ -360,14 +360,6 @@
             {
               "id": "clap 3.2.20",
               "target": "clap"
-            },
-            {
-              "id": "lazy_static 1.4.0",
-              "target": "lazy_static"
-            },
-            {
-              "id": "syn 1.0.99",
-              "target": "syn"
             }
           ],
           "selects": {}
@@ -568,39 +560,6 @@
         }
       },
       "license": "Apache-2.0 OR MIT"
-    },
-    "lazy_static 1.4.0": {
-      "name": "lazy_static",
-      "version": "1.4.0",
-      "repository": {
-        "Http": {
-          "url": "https://crates.io/api/v1/crates/lazy_static/1.4.0/download",
-          "sha256": "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
-        }
-      },
-      "targets": [
-        {
-          "Library": {
-            "crate_name": "lazy_static",
-            "crate_root": "src/lib.rs",
-            "srcs": {
-              "include": [
-                "**/*.rs"
-              ],
-              "exclude": []
-            }
-          }
-        }
-      ],
-      "library_target_name": "lazy_static",
-      "common_attrs": {
-        "compile_data_glob": [
-          "**"
-        ],
-        "edition": "2015",
-        "version": "1.4.0"
-      },
-      "license": "MIT/Apache-2.0"
     },
     "libc 0.2.132": {
       "name": "libc",
@@ -1117,13 +1076,11 @@
           "clone-impls",
           "default",
           "derive",
-          "extra-traits",
           "full",
           "parsing",
           "printing",
           "proc-macro",
-          "quote",
-          "visit"
+          "quote"
         ],
         "deps": {
           "common": [

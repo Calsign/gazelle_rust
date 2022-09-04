@@ -90,7 +90,9 @@ func (*rustLang) KnownDirectives() []string {
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
 	if _, ok := c.Exts[l.Name()]; !ok {
-		c.Exts[l.Name()] = &rustConfig{}
+		c.Exts[l.Name()] = &rustConfig{
+			LockfileCrates: EmptyLockfileCrates(),
+		}
 	}
 	return c.Exts[l.Name()].(*rustConfig)
 }
@@ -98,12 +100,14 @@ func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
 func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 	cfg := l.GetConfig(c)
 
-	for _, directive := range f.Directives {
-		if directive.Key == lockfileDirective {
-			cfg.Lockfile = path.Join(c.RepoRoot, rel, directive.Value)
-			cfg.LockfileCrates = NewLockfileCrates(l.Parser, cfg.Lockfile)
-		} else if directive.Key == cratesPrefixDirective {
-			cfg.CratesPrefix = directive.Value
+	if f != nil {
+		for _, directive := range f.Directives {
+			if directive.Key == lockfileDirective {
+				cfg.Lockfile = path.Join(c.RepoRoot, rel, directive.Value)
+				cfg.LockfileCrates = NewLockfileCrates(l.Parser, cfg.Lockfile)
+			} else if directive.Key == cratesPrefixDirective {
+				cfg.CratesPrefix = directive.Value
+			}
 		}
 	}
 }

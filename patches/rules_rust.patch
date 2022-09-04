@@ -1,7 +1,7 @@
-diff --git a/crate_universe/src/lib.rs b/crate_universe/src/lib.rs
+diff --git crate_universe/src/lib.rs crate_universe/src/lib.rs
 index ae857172..61cda6a1 100644
---- a/crate_universe/src/lib.rs
-+++ b/crate_universe/src/lib.rs
+--- crate_universe/src/lib.rs
++++ crate_universe/src/lib.rs
 @@ -1,7 +1,7 @@
  pub mod cli;
  
