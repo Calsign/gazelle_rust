@@ -22,11 +22,12 @@ enum Args {
 fn handle_rust_imports_request(
     request: RustImportsRequest,
 ) -> Result<RustImportsResponse, Box<dyn Error>> {
-    let (imports, hints) = parser::parse_imports(PathBuf::from(request.file_path))?;
+    let rust_imports = parser::parse_imports(PathBuf::from(request.file_path))?;
 
     let mut response = RustImportsResponse::default();
-    response.imports = RepeatedField::from_vec(imports);
-    response.set_hints(hints);
+    response.set_hints(rust_imports.hints);
+    response.imports = RepeatedField::from_vec(rust_imports.imports);
+    response.test_imports = RepeatedField::from_vec(rust_imports.test_imports);
 
     Ok(response)
 }
@@ -54,11 +55,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match args {
         Args::OneShot { path } => {
-            let (mut imports, _) = parser::parse_imports(path)?;
-            imports.sort();
+            let mut rust_imports = parser::parse_imports(path)?;
+            rust_imports.imports.sort();
 
             println!("Imports:");
-            for import in imports {
+            for import in rust_imports.imports {
                 println!("  {}", import);
             }
         }

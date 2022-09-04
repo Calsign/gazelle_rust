@@ -23,8 +23,9 @@ message Hints {
 }
 
 message RustImportsResponse {
-    repeated string imports = 1;
-    Hints hints = 2;
+    Hints hints = 1;
+    repeated string imports = 2;
+    repeated string test_imports = 3;
 }
 
 message LockfileCratesRequest {

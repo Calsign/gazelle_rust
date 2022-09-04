@@ -83,6 +83,7 @@ dependencies = [
  "cargo-lock",
  "clap",
  "lazy_static",
+ "proc-macro2",
  "syn",
 ]
 

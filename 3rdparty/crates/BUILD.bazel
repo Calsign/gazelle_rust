@@ -46,6 +46,12 @@ alias(
 )
 
 alias(
+    name = "proc-macro2",
+    actual = "@crates_vendor__proc-macro2-1.0.43//:proc_macro2",
+    tags = ["manual"],
+)
+
+alias(
     name = "syn",
     actual = "@crates_vendor__syn-1.0.99//:syn",
     tags = ["manual"],

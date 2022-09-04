@@ -6,6 +6,7 @@ use std::path::PathBuf;
 struct TestCase {
     filename: &'static str,
     expected_imports: Vec<&'static str>,
+    expected_test_imports: Vec<&'static str>,
 }
 
 lazy_static::lazy_static! {
@@ -26,6 +27,23 @@ lazy_static::lazy_static! {
                 "test_inner_2",
                 "test_inner_mod_2",
                 "test_inner_mod_3",
+            ],
+            expected_test_imports: vec![],
+        },
+        TestCase {
+            filename: "test_only.rs",
+            expected_imports: vec![
+                "a",
+                "x",
+                "m",
+                "n",
+            ],
+            expected_test_imports: vec![
+                "b",
+                "c",
+                "d",
+                "e",
+                "f",
             ],
         },
     ];
@@ -72,11 +90,19 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
         let mut file = dir.clone();
         file.push(test_case.filename);
 
-        let imports = parser::parse_imports(file)?;
+        let rust_imports = parser::parse_imports(file)?;
         assert_eq_vecs(
-            &imports,
+            &rust_imports.imports,
             &test_case
                 .expected_imports
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        );
+        assert_eq_vecs(
+            &rust_imports.test_imports,
+            &test_case
+                .expected_test_imports
                 .iter()
                 .map(|s| s.to_string())
                 .collect(),
