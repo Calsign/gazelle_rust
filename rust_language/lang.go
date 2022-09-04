@@ -40,48 +40,42 @@ func NewLanguage() language.Language {
 
 func (*rustLang) Name() string { return langName }
 
+var (
+	commonDefs []string = []string{"rust_library", "rust_binary", "rust_test",
+		"rust_proc_macro", "rust_shared_library", "rust_static_library"}
+	protoDefs []string = []string{"rust_proto_library", "rust_grpc_library"}
+)
+
 func (*rustLang) Kinds() map[string]rule.KindInfo {
-	return map[string]rule.KindInfo{
-		"rust_library": {
+	kinds := make(map[string]rule.KindInfo)
+
+	for _, commonDef := range commonDefs {
+		kinds[commonDef] = rule.KindInfo{
 			NonEmptyAttrs:  map[string]bool{"srcs": true},
 			MergeableAttrs: map[string]bool{"srcs": true, "deps": true, "proc_macro_deps": true},
 			ResolveAttrs:   map[string]bool{"deps": true, "proc_macro_deps": true},
-		},
-		"rust_binary": {
-			NonEmptyAttrs:  map[string]bool{"srcs": true},
-			MergeableAttrs: map[string]bool{"srcs": true, "deps": true, "proc_macro_deps": true},
-			ResolveAttrs:   map[string]bool{"deps": true, "proc_macro_deps": true},
-		},
-		"rust_test": {
-			NonEmptyAttrs:  map[string]bool{"srcs": true},
-			MergeableAttrs: map[string]bool{"srcs": true, "deps": true, "proc_macro_deps": true},
-			ResolveAttrs:   map[string]bool{"deps": true, "proc_macro_deps": true},
-		},
-		"rust_proc_macro": {
-			NonEmptyAttrs:  map[string]bool{"srcs": true},
-			MergeableAttrs: map[string]bool{"srcs": true, "deps": true, "proc_macro_deps": true},
-			ResolveAttrs:   map[string]bool{"deps": true, "proc_macro_deps": true},
-		},
-		"rust_proto_library": {
-			MergeableAttrs: map[string]bool{},
-			ResolveAttrs:   map[string]bool{},
-		},
-		"rust_grpc_library": {
-			MergeableAttrs: map[string]bool{},
-			ResolveAttrs:   map[string]bool{},
-		},
+		}
 	}
+
+	for _, protoDef := range protoDefs {
+		kinds[protoDef] = rule.KindInfo{
+			MergeableAttrs: map[string]bool{},
+			ResolveAttrs:   map[string]bool{},
+		}
+	}
+
+	return kinds
 }
 
 func (*rustLang) Loads() []rule.LoadInfo {
 	return []rule.LoadInfo{
 		{
 			Name:    "@rules_rust//rust:defs.bzl",
-			Symbols: []string{"rust_library", "rust_binary", "rust_test", "rust_proc_macro"},
+			Symbols: commonDefs,
 		},
 		{
 			Name:    "@rules_rust//proto:proto.bzl",
-			Symbols: []string{"rust_proto_library", "rust_grpc_library"},
+			Symbols: protoDefs,
 		},
 	}
 }

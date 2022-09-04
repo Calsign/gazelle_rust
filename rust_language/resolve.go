@@ -72,8 +72,7 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 
 	cfg := l.GetConfig(c)
 
-	switch r.Kind() {
-	case "rust_library", "rust_binary", "rust_test", "rust_proc_macro":
+	if SliceContains(commonDefs, r.Kind()) {
 		files := imports.([]*pb.RustImportsResponse)
 		deps := map[label.Label]bool{}
 		procMacroDeps := map[label.Label]bool{}

@@ -8,6 +8,7 @@ go_library(
         "lockfile_crates.go",
         "parser.go",
         "resolve.go",
+        "utils.go",
     ],
     data = ["//rust_parser"],
     importpath = "github.com/calsign/gazelle_rust/rust_language",
