@@ -52,7 +52,7 @@ const maxMsgSize uint32 = 4096
 var buf []byte = make([]byte, maxMsgSize)
 var sf32 int = protowire.SizeFixed32()
 
-func (p *Parser) WriteRequest(request *pb.RustImportsRequest) error {
+func (p *Parser) WriteRequest(request *pb.Request) error {
 	size := p.marshalOptions.Size(request)
 
 	buf := []byte{}
@@ -67,45 +67,57 @@ func (p *Parser) WriteRequest(request *pb.RustImportsRequest) error {
 	return nil
 }
 
-func (p *Parser) ReadResponse() (*pb.RustImportsResponse, error) {
+func ReadResponse[M proto.Message](p *Parser, response M) error {
 	n, err := p.stdout.Read(buf[:sf32])
 	if n != sf32 {
-		return nil, errors.New("invalid size")
+		return errors.New("invalid size")
 	}
 	if err != nil {
-		return nil, err
+		return err
 	}
 	size, n := protowire.ConsumeFixed32(buf[:sf32])
 	if n != sf32 {
 		log.Fatal("n: %v\n", n)
 	}
 	if size > maxMsgSize {
-		return nil, errors.New(fmt.Sprintf(
+		return errors.New(fmt.Sprintf(
 			"message size %d exceeds max message size %d", size, maxMsgSize))
 	}
 	n, err = p.stdout.Read(buf[:size])
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if uint32(n) != size {
-		return nil, errors.New(fmt.Sprintf(
+		return errors.New(fmt.Sprintf(
 			"recieved wrong size %d, expected %d", n, size))
 	}
-	response := &pb.RustImportsResponse{}
 	err = proto.Unmarshal(buf[:size], response)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return response, nil
+	return nil
 }
 
 func (p *Parser) Parse(request *pb.RustImportsRequest) (*pb.RustImportsResponse, error) {
-	if err := p.WriteRequest(request); err != nil {
+	if err := p.WriteRequest(&pb.Request{
+		Kind: &pb.Request_RustImports{RustImports: request}}); err != nil {
 		return nil, err
 	}
-	response, err := p.ReadResponse()
-	if err != nil {
+	response := &pb.RustImportsResponse{}
+	if err := ReadResponse[*pb.RustImportsResponse](p, response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func (p *Parser) GetLockfileCrates(request *pb.LockfileCratesRequest) (*pb.LockfileCratesResponse, error) {
+	if err := p.WriteRequest(&pb.Request{
+		Kind: &pb.Request_LockfileCrates{LockfileCrates: request}}); err != nil {
+		return nil, err
+	}
+	response := &pb.LockfileCratesResponse{}
+	if err := ReadResponse[*pb.LockfileCratesResponse](p, response); err != nil {
 		return nil, err
 	}
 	return response, nil

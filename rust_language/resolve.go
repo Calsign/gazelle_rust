@@ -24,6 +24,7 @@ var provided = map[string]label.Label{
 
 func (l *rustLang) Imports(c *config.Config, r *rule.Rule,
 	f *rule.File) []resolve.ImportSpec {
+
 	specs := []resolve.ImportSpec{}
 
 	switch r.Kind() {
@@ -52,11 +53,14 @@ func (*rustLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 
 func (*rustLang) CrossResolve(c *config.Config, ix *resolve.RuleIndex,
 	spec resolve.ImportSpec, lang string) []resolve.FindResult {
+
 	return []resolve.FindResult{}
 }
 
 func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 	rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
+
+	cfg := l.GetConfig(c)
 
 	switch r.Kind() {
 	case "rust_library", "rust_binary", "rust_test":
@@ -76,6 +80,12 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 					continue
 				} else if override, ok := resolve.FindRuleWithOverride(c, spec, l.Name()); ok {
 					selected = override
+				} else if _, ok := cfg.LockfileCrates.Crates[spec]; ok {
+					var err error
+					selected, err = label.Parse(cfg.CratesPrefix + imp)
+					if err != nil {
+						log.Fatal(err)
+					}
 				} else if candidates := ix.FindRulesByImportWithConfig(c, spec, l.Name()); len(candidates) >= 1 {
 					if len(candidates) == 1 {
 						selected = candidates[0].Label

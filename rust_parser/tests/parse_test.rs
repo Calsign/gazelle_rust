@@ -72,7 +72,7 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
         let mut file = dir.clone();
         file.push(test_case.filename);
 
-        let imports = rust_parser::parse_imports(file)?;
+        let imports = parser::parse_imports(file)?;
         assert_eq_vecs(
             &imports,
             &test_case

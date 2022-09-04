@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "generate.go",
         "lang.go",
+        "lockfile_crates.go",
         "parser.go",
         "resolve.go",
     ],

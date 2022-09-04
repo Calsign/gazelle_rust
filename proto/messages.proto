@@ -1,9 +1,25 @@
 syntax = "proto3";
 
+message Request {
+    oneof kind {
+        RustImportsRequest rust_imports = 1;
+        LockfileCratesRequest lockfile_crates = 2;
+    }
+}
+
 message RustImportsRequest {
     string file_path = 1;
 }
 
 message RustImportsResponse {
     repeated string imports = 1;
+}
+
+message LockfileCratesRequest {
+    string lockfile_path = 1;
+}
+
+message LockfileCratesResponse {
+    repeated string crates = 1;
+    repeated string proc_macro_crates = 2;
 }

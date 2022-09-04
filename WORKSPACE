@@ -37,8 +37,12 @@ gazelle_dependencies()
 
 # Rust
 
+RUST_VERSION = "1.63.0"
+
 http_archive(
     name = "rules_rust",
+    patch_args = ["-p1"],
+    patches = ["//patches:rules_rust.patch"],
     sha256 = "6bfe75125e74155955d8a9854a8811365e6c0f3d33ed700bc17f39e32522c822",
     urls = [
         "https://mirror.bazel.build/github.com/bazelbuild/rules_rust/releases/download/0.9.0/rules_rust-v0.9.0.tar.gz",
@@ -52,7 +56,7 @@ rules_rust_dependencies()
 
 rust_register_toolchains(
     edition = "2021",
-    version = "1.63.0",
+    version = RUST_VERSION,
 )
 
 load("//:rust_deps.bzl", "rust_dependencies")
@@ -62,6 +66,10 @@ rust_dependencies()
 load("@crates//:defs.bzl", "crate_repositories")
 
 crate_repositories()
+
+load("@rules_rust//crate_universe:repositories.bzl", "crate_universe_dependencies")
+
+crate_universe_dependencies()
 
 # Protobuf
 
@@ -86,5 +94,3 @@ load("@rules_rust//proto:transitive_repositories.bzl", "rust_proto_transitive_re
 rust_proto_repositories()
 
 rust_proto_transitive_repositories()
-
-# register_toolchains("//rust_parser:proto-toolchain")

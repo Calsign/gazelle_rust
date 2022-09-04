@@ -1,5 +1,8 @@
 load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 
+# gazelle:rust_lockfile cargo.bazel.lock
+# gazelle:rust_crates_prefix @crates//:
+
 # gazelle:exclude build
 
 gazelle_binary(
@@ -25,10 +28,11 @@ gazelle(
     command = "update-repos",
 )
 
-# TODO: support crate_universe
-# gazelle:resolve rust syn @crates//:syn
-# gazelle:resolve rust clap @crates//:clap
-# gazelle:resolve rust lazy_static @crates//:lazy_static
-
 # NOTE: need to use the version of protobuf from rules_rust so that it matches
 # gazelle:resolve rust protobuf @rules_rust//proto/raze:protobuf
+
+# NOTE: use cargo_bazel to parse the lockfile
+# gazelle:resolve rust cargo_bazel @rules_rust//crate_universe:cargo_bazel
+
+# NOTE: need to use the version of serde_json from crate_universe so that it matches
+# gazelle:resolve rust serde_json @rules_rust//crate_universe/3rdparty/crates:serde_json

@@ -3,11 +3,20 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
 # gazelle:exclude test_data
 
 rust_library(
-    name = "rust_parser_lib",
-    srcs = ["lib.rs"],
-    crate_name = "rust_parser",
+    name = "parser",
+    srcs = ["parser.rs"],
     visibility = [":__subpackages__"],
     deps = ["@crates//:syn"],
+)
+
+rust_library(
+    name = "lockfile_crates",
+    srcs = ["lockfile_crates.rs"],
+    visibility = [":__subpackages__"],
+    deps = [
+        "@rules_rust//crate_universe:cargo_bazel",
+        "@rules_rust//crate_universe/3rdparty/crates:serde_json",
+    ],
 )
 
 rust_binary(
@@ -15,7 +24,8 @@ rust_binary(
     srcs = ["main.rs"],
     visibility = ["//visibility:public"],
     deps = [
-        ":rust_parser_lib",
+        ":lockfile_crates",
+        ":parser",
         "//proto:messages_rust_proto",
         "@crates//:clap",
         "@rules_rust//proto/raze:protobuf",

@@ -2,20 +2,33 @@ package rust_language
 
 import (
 	"flag"
+	"path"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-var langName string = "rust"
+var (
+	langName              string = "rust"
+	lockfileDirective     string = "rust_lockfile"
+	cratesPrefixDirective string = "rust_crates_prefix"
+)
+
+type rustConfig struct {
+	Lockfile       string
+	LockfileCrates *LockfileCrates
+	CratesPrefix   string
+}
 
 type rustLang struct {
 	Parser *Parser
 }
 
 func NewLanguage() language.Language {
-	return &rustLang{Parser: NewParser()}
+	return &rustLang{
+		Parser: NewParser(),
+	}
 }
 
 func (*rustLang) Name() string { return langName }
@@ -72,8 +85,25 @@ func (*rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 }
 
 func (*rustLang) KnownDirectives() []string {
-	return nil
+	return []string{lockfileDirective, cratesPrefixDirective}
 }
 
-func (*rustLang) Configure(c *config.Config, rel string, f *rule.File) {
+func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
+	if _, ok := c.Exts[l.Name()]; !ok {
+		c.Exts[l.Name()] = &rustConfig{}
+	}
+	return c.Exts[l.Name()].(*rustConfig)
+}
+
+func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
+	cfg := l.GetConfig(c)
+
+	for _, directive := range f.Directives {
+		if directive.Key == lockfileDirective {
+			cfg.Lockfile = path.Join(c.RepoRoot, rel, directive.Value)
+			cfg.LockfileCrates = NewLockfileCrates(l.Parser, cfg.Lockfile)
+		} else if directive.Key == cratesPrefixDirective {
+			cfg.CratesPrefix = directive.Value
+		}
+	}
 }
