@@ -8,6 +8,8 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
+var langName string = "rust"
+
 type rustLang struct {
 	Parser *Parser
 }
@@ -16,13 +18,32 @@ func NewLanguage() language.Language {
 	return &rustLang{Parser: NewParser()}
 }
 
-func (*rustLang) Name() string { return "rust" }
+func (*rustLang) Name() string { return langName }
 
 func (*rustLang) Kinds() map[string]rule.KindInfo {
 	return map[string]rule.KindInfo{
 		"rust_library": {
-			MergeableAttrs: map[string]bool{"deps": true},
+			NonEmptyAttrs:  map[string]bool{"srcs": true},
+			MergeableAttrs: map[string]bool{"srcs": true, "deps": true},
 			ResolveAttrs:   map[string]bool{"deps": true},
+		},
+		"rust_binary": {
+			NonEmptyAttrs:  map[string]bool{"srcs": true},
+			MergeableAttrs: map[string]bool{"srcs": true, "deps": true},
+			ResolveAttrs:   map[string]bool{"deps": true},
+		},
+		"rust_test": {
+			NonEmptyAttrs:  map[string]bool{"srcs": true},
+			MergeableAttrs: map[string]bool{"srcs": true, "deps": true},
+			ResolveAttrs:   map[string]bool{"deps": true},
+		},
+		"rust_proto_library": {
+			MergeableAttrs: map[string]bool{},
+			ResolveAttrs:   map[string]bool{},
+		},
+		"rust_grpc_library": {
+			MergeableAttrs: map[string]bool{},
+			ResolveAttrs:   map[string]bool{},
 		},
 	}
 }
@@ -31,7 +52,11 @@ func (*rustLang) Loads() []rule.LoadInfo {
 	return []rule.LoadInfo{
 		{
 			Name:    "@rules_rust//rust:defs.bzl",
-			Symbols: []string{"rust_library"},
+			Symbols: []string{"rust_library", "rust_binary", "rust_test"},
+		},
+		{
+			Name:    "@rules_rust//proto:proto.bzl",
+			Symbols: []string{"rust_proto_library", "rust_grpc_library"},
 		},
 	}
 }

@@ -24,3 +24,11 @@ gazelle(
     ],
     command = "update-repos",
 )
+
+# TODO: support crate_universe
+# gazelle:resolve rust syn @crates//:syn
+# gazelle:resolve rust clap @crates//:clap
+# gazelle:resolve rust lazy_static @crates//:lazy_static
+
+# NOTE: need to use the version of protobuf from rules_rust so that it matches
+# gazelle:resolve rust protobuf @rules_rust//proto/raze:protobuf

@@ -99,3 +99,14 @@ func (p *Parser) ReadResponse() (*pb.RustImportsResponse, error) {
 
 	return response, nil
 }
+
+func (p *Parser) Parse(request *pb.RustImportsRequest) (*pb.RustImportsResponse, error) {
+	if err := p.WriteRequest(request); err != nil {
+		return nil, err
+	}
+	response, err := p.ReadResponse()
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}

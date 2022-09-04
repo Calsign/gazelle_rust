@@ -18,7 +18,6 @@ rust_binary(
         ":rust_parser_lib",
         "//proto:messages_rust_proto",
         "@crates//:clap",
-        # NOTE: need to use the same protobuf used by rules_rust
         "@rules_rust//proto/raze:protobuf",
     ],
 )
