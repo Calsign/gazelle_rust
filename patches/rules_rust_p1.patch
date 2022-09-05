@@ -1,0 +1,19 @@
+diff --git a/crate_universe/src/lib.rs b/crate_universe/src/lib.rs
+index ae857172..447c5382 100644
+--- a/crate_universe/src/lib.rs
++++ b/crate_universe/src/lib.rs
+@@ -1,12 +1,12 @@
+ pub mod cli;
+ 
+ mod config;
+-mod context;
++pub mod context;
+ mod lockfile;
+ mod metadata;
+ mod rendering;
+ mod splicing;
+-mod utils;
++pub mod utils;
+ 
+ #[cfg(test)]
+ mod test;
