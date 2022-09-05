@@ -68,8 +68,8 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 
 		var crateName string
 		if ruleData.testedCrate != nil {
-			// if this is an associated rust_test, the crate name is the one from the tested target
-			crateName = getCrateName(ruleData.testedCrate)
+			// test crates have to depend on the tested crate to be able to import them directly
+			crateName = ""
 		} else {
 			crateName = getCrateName(r)
 		}
@@ -90,7 +90,7 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 			}
 
 			for _, imp := range imports {
-				if imp == crateName {
+				if crateName != "" && imp == crateName {
 					// you are allowed to import yourself
 					continue
 				}
