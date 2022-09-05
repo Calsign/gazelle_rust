@@ -1,7 +1,6 @@
 package rust_language
 
 import (
-	"log"
 	"sort"
 	"strings"
 
@@ -97,12 +96,12 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 
 				is_proc_macro := false
 
-				label, found := l.resolveCrate(cfg, c, ix, l.Name(), imp)
+				label, found := l.resolveCrate(cfg, c, ix, l.Name(), imp, from)
 				if label != nil {
 					is_proc_macro = false
 				}
 				if !found {
-					label, found = l.resolveCrate(cfg, c, ix, procMacroLangName, imp)
+					label, found = l.resolveCrate(cfg, c, ix, procMacroLangName, imp, from)
 					if label != nil {
 						is_proc_macro = true
 					}
@@ -123,7 +122,7 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 						}
 					}
 				} else {
-					log.Printf("no match for %s\n", imp)
+					l.Log(c, logErr, from, "no match for %s\n", imp)
 				}
 			}
 		}
@@ -142,7 +141,7 @@ func maybeSetAttrStrings(r *rule.Rule, attr string, val []string) {
 }
 
 func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.RuleIndex,
-	lang string, imp string) (*label.Label, bool) {
+	lang string, imp string, from label.Label) (*label.Label, bool) {
 	spec := resolve.ImportSpec{
 		Lang: lang,
 		Imp:  imp,
@@ -156,7 +155,7 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 		var err error
 		label, err := label.Parse(cfg.CratesPrefix + crateName)
 		if err != nil {
-			log.Fatal(err)
+			l.Log(c, logFatal, from, "bad %s: %v\n", cratesPrefixDirective, err)
 		}
 		return &label, true
 	} else if candidates := ix.FindRulesByImportWithConfig(c, spec, l.Name()); len(candidates) >= 1 {
@@ -167,7 +166,7 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 			for _, candidate := range candidates {
 				candidateLabels = append(candidateLabels, candidate.Label.String())
 			}
-			log.Printf("multiple matches found for %s: [%s]\n", spec.Imp, strings.Join(candidateLabels, ", "))
+			l.Log(c, logErr, from, "multiple matches found for %s: [%s]\n", spec.Imp, strings.Join(candidateLabels, ", "))
 			return nil, true
 		}
 	} else if override, ok := Provided[spec.Imp]; ok {

@@ -2,7 +2,6 @@ package rust_language
 
 import (
 	"flag"
-	"log"
 	"path"
 	"strconv"
 	"strings"
@@ -20,6 +19,7 @@ var (
 	cargoLockfileDirective     string = "rust_cargo_lockfile"
 	cratesPrefixDirective      string = "rust_crates_prefix"
 	procMacroOverrideDirective string = "rust_override_proc_macro"
+	checkFlag                  string = "rust_check"
 )
 
 type rustConfig struct {
@@ -27,6 +27,7 @@ type rustConfig struct {
 	CratesPrefix       string
 	ProcMacroOverrides map[string]bool
 	KindMapInverse     map[string]string
+	Check              bool
 }
 
 type rustLang struct {
@@ -83,11 +84,18 @@ func (*rustLang) Loads() []rule.LoadInfo {
 
 func (*rustLang) Fix(c *config.Config, f *rule.File) {}
 
-func (*rustLang) RegisterFlags(fs *flag.FlagSet, cmd string,
-	c *config.Config) {
+func (*rustLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
+	fs.Bool(checkFlag, false, "non-fatal warnings and errors become fatal")
 }
 
-func (*rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
+func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
+	cfg := l.GetConfig(c)
+	shouldCheck, err := strconv.ParseBool(fs.Lookup(checkFlag).Value.String())
+	if err != nil {
+		return err
+	}
+	cfg.Check = shouldCheck
+
 	return nil
 }
 
@@ -115,21 +123,22 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 		for _, directive := range f.Directives {
 			if directive.Key == lockfileDirective {
 				lockfile := path.Join(c.RepoRoot, rel, directive.Value)
-				cfg.LockfileCrates = NewLockfileCrates(l.Parser, lockfile, false)
+				cfg.LockfileCrates = l.NewLockfileCrates(c, lockfile, false)
 			} else if directive.Key == cargoLockfileDirective {
 				lockfile := path.Join(c.RepoRoot, rel, directive.Value)
-				cfg.LockfileCrates = NewLockfileCrates(l.Parser, lockfile, true)
+				cfg.LockfileCrates = l.NewLockfileCrates(c, lockfile, true)
 			} else if directive.Key == cratesPrefixDirective {
 				cfg.CratesPrefix = directive.Value
 			} else if directive.Key == procMacroOverrideDirective {
 				split := strings.Split(directive.Value, " ")
 				if len(split) != 2 || (split[1] != "true" && split[1] != "false") {
-					log.Fatalf("%s: bad %s, should be gazelle:%s <crate> <true|false>",
-						f.Path, procMacroOverrideDirective, procMacroOverrideDirective)
+					l.Log(c, logFatal, f, "bad %s, should be gazelle:%s <crate> <true|false>",
+						procMacroOverrideDirective, procMacroOverrideDirective)
 				}
 				val, err := strconv.ParseBool(split[1])
 				if err != nil {
-					log.Fatal(err)
+					l.Log(c, logFatal, f, "bad %s, should be gazelle:%s <crate> <true|false>",
+						procMacroOverrideDirective, procMacroOverrideDirective)
 				}
 				cfg.ProcMacroOverrides[split[0]] = val
 			}

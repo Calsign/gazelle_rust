@@ -1,10 +1,10 @@
 package rust_language
 
 import (
-	"log"
 	"path"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -112,7 +112,7 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 		if rule.Kind() == "rust_test" {
 			if crateName := getTestCrate(rule, args.Config.RepoName, args.Rel); crateName != "" {
 				if _, ok := testRules[crateName]; ok {
-					log.Printf("%s: found multiple crate test rules for %s\n", args.File.Path, crateName)
+					l.Log(args.Config, logWarn, args.File, "found multiple crate test rules for %s\n", crateName)
 				}
 				testRules[crateName] = rule
 			}
@@ -137,7 +137,7 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 					filesInExistingRules[file] = true
 
 					if strings.HasSuffix(file, ".rs") {
-						response := l.parseFile(file, args)
+						response := l.parseFile(args.Config, file, args)
 						responses = append(responses, response)
 					}
 				}
@@ -149,7 +149,7 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 
 	for _, file := range args.RegularFiles {
 		if !filesInExistingRules[file] && strings.HasSuffix(file, ".rs") {
-			response := l.parseFile(file, args)
+			response := l.parseFile(args.Config, file, args)
 
 			inferredKind := l.inferRuleKind(file, dirname, response)
 
@@ -196,11 +196,11 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 	return result
 }
 
-func (l *rustLang) parseFile(file string, args language.GenerateArgs) *pb.RustImportsResponse {
+func (l *rustLang) parseFile(c *config.Config, file string, args language.GenerateArgs) *pb.RustImportsResponse {
 	request := &pb.RustImportsRequest{FilePath: path.Join(args.Dir, file)}
 	response, err := l.Parser.Parse(request)
 	if err != nil {
-		log.Fatal(err)
+		l.Log(c, logFatal, file, "failed to parse %s: %v", err)
 	}
 	return response
 }

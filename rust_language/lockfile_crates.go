@@ -1,8 +1,7 @@
 package rust_language
 
 import (
-	"log"
-
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 
 	pb "github.com/calsign/gazelle_rust/proto"
@@ -25,7 +24,7 @@ func EmptyLockfileCrates() *LockfileCrates {
 	}
 }
 
-func NewLockfileCrates(p *Parser, lockfilePath string, cargo bool) *LockfileCrates {
+func (l *rustLang) NewLockfileCrates(c *config.Config, lockfilePath string, cargo bool) *LockfileCrates {
 	lockfileCrates := EmptyLockfileCrates()
 
 	var request *pb.LockfileCratesRequest
@@ -43,9 +42,9 @@ func NewLockfileCrates(p *Parser, lockfilePath string, cargo bool) *LockfileCrat
 		}
 	}
 
-	response, err := p.GetLockfileCrates(request)
+	response, err := l.Parser.GetLockfileCrates(request)
 	if err != nil {
-		log.Fatal(err)
+		l.Log(c, logFatal, lockfilePath, "failed to parse lockfile crates: %v", err)
 	}
 
 	for _, crate := range response.Crates {

@@ -42,6 +42,13 @@ jobs:
       - name: build and test
         run: bazel test //... --config ci
 
-      - name: build and test example
+      - name: test gazelle invariance
+        run: bazel run //:gazelle -- --mode=diff --rust_check
+
+      - name: build and test for example
         run: bazel test //...
+        working-directory: ./example
+
+      - name: test gazelle invariance for example
+        run: bazel run //:gazelle -- --mode=diff --rust_check
         working-directory: ./example
