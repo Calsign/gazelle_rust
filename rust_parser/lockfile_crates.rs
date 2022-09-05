@@ -33,6 +33,19 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
 
     let mut crates = Vec::new();
 
+    let mut add_crate = |id, is_proc_macro| {
+        let crate_ = context.crates.get(id).expect("missing crate");
+
+        if let Some(library_target_name) = &crate_.library_target_name {
+            let mut package = Package::default();
+            package.name = crate_.name.clone();
+            package.crate_name = library_target_name.to_string();
+            package.proc_macro = is_proc_macro;
+
+            crates.push(package);
+        }
+    };
+
     for workspace_member in context.workspace_members.keys() {
         let workspace_crate = context
             .crates
@@ -40,16 +53,7 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
             .expect("missing workspace member");
 
         for dep in workspace_crate.common_attrs.deps.get_iter(None).unwrap() {
-            let crate_ = context.crates.get(&dep.id).expect("missing crate");
-
-            if let Some(library_target_name) = &crate_.library_target_name {
-                let mut package = Package::default();
-                package.name = crate_.name.clone();
-                package.crate_name = library_target_name.to_string();
-                package.proc_macro = false;
-
-                crates.push(package);
-            }
+            add_crate(&dep.id, false);
         }
 
         for proc_macro_dep in workspace_crate
@@ -58,19 +62,7 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
             .get_iter(None)
             .unwrap()
         {
-            let crate_ = context
-                .crates
-                .get(&proc_macro_dep.id)
-                .expect("missing crate");
-
-            if let Some(library_target_name) = &crate_.library_target_name {
-                let mut package = Package::default();
-                package.name = proc_macro_dep.target.clone();
-                package.crate_name = library_target_name.to_string();
-                package.proc_macro = true;
-
-                crates.push(package);
-            }
+            add_crate(&proc_macro_dep.id, true);
         }
     }
 
