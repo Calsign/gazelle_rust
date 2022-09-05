@@ -9,10 +9,11 @@ use messages_rust_proto::Package;
 
 pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>, Box<dyn Error>> {
     let lockfile = match File::open(&lockfile_path) {
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+        Err(err) => {
             eprintln!(
-                "Could not find lockfile: {}",
+                "Could not open lockfile {}: {}",
                 &lockfile_path.to_str().unwrap_or("<utf-8 decode error>"),
+                err,
             );
             std::process::exit(1);
         }

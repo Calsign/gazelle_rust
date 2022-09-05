@@ -17,9 +17,19 @@ pub struct RustImports {
     pub test_imports: Vec<String>,
 }
 
-pub fn parse_imports(file: PathBuf) -> Result<RustImports, Box<dyn Error>> {
-    // TODO: stream from the file instead of loading it all into memory
-    let mut file = File::open(file)?;
+pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
+    // TODO: stream from the file instead of loading it all into memory?
+    let mut file = match File::open(&path) {
+        Err(err) => {
+            eprintln!(
+                "Could not open file {}: {}",
+                path.to_str().unwrap_or("<utf-8 decode error>"),
+                err,
+            );
+            std::process::exit(1);
+        }
+        file => file?,
+    };
     let mut content = String::new();
     file.read_to_string(&mut content)?;
 
