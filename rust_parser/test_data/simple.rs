@@ -24,6 +24,8 @@ fn main() {
     let x = X::new();
 
     self_use::something();
+
+    use crate::foobar;
 }
 
 use test_inner_mod_3;

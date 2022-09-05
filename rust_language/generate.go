@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 
@@ -43,6 +44,27 @@ func (l *rustLang) inferRuleKind(filename string, dirname *string,
 	}
 }
 
+type RuleData struct {
+	rule      *rule.Rule
+	responses []*pb.RustImportsResponse
+	// if a test crate referring to another crate, that crate; otherwise, nil
+	testedCrate *rule.Rule
+}
+
+func getTestCrate(rule *rule.Rule, repo string, pkg string) string {
+	crateName := rule.AttrString("crate")
+	if crateName != "" {
+		label, err := label.Parse(crateName)
+		if err == nil {
+			rel := label.Rel(repo, pkg)
+			if rel.Relative {
+				return label.Name
+			}
+		}
+	}
+	return ""
+}
+
 func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	result := language.GenerateResult{}
 
@@ -54,6 +76,33 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 	} else {
 		base := path.Base(args.Rel)
 		dirname = &base
+	}
+
+	// list of all non-rust_test rules; these may generate additional crate test targets
+	nonTestRules := []RuleData{}
+	// map of crate test rules; key is the non-rust_test rule name that each one refers to
+	testRules := make(map[string]*rule.Rule)
+
+	addRule := func(rule *rule.Rule, responses []*pb.RustImportsResponse) {
+		ruleData := RuleData{
+			rule:        rule,
+			responses:   responses,
+			testedCrate: nil,
+		}
+
+		result.Gen = append(result.Gen, rule)
+		result.Imports = append(result.Imports, ruleData)
+
+		if rule.Kind() == "rust_test" {
+			if crateName := getTestCrate(rule, args.Config.RepoName, args.Rel); crateName != "" {
+				if _, ok := testRules[crateName]; ok {
+					log.Printf("%s: found multiple crate test rules for %s\n", args.File.Path, crateName)
+				}
+				testRules[crateName] = rule
+			}
+		} else {
+			nonTestRules = append(nonTestRules, ruleData)
+		}
 	}
 
 	if args.File != nil {
@@ -70,8 +119,7 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 					}
 				}
 
-				result.Gen = append(result.Gen, rule)
-				result.Imports = append(result.Imports, responses)
+				addRule(rule, responses)
 			}
 		}
 	}
@@ -85,8 +133,37 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 			rule := rule.NewRule(inferredKind, strings.TrimSuffix(file, ".rs"))
 			rule.SetAttr("srcs", []string{file})
 
-			result.Gen = append(result.Gen, rule)
-			result.Imports = append(result.Imports, []*pb.RustImportsResponse{response})
+			responses := []*pb.RustImportsResponse{response}
+
+			addRule(rule, responses)
+		}
+	}
+
+	for _, ruleData := range nonTestRules {
+		hasTest := false
+		for _, response := range ruleData.responses {
+			if response.Hints.HasTest {
+				hasTest = true
+			}
+		}
+
+		testRule := testRules[ruleData.rule.Name()]
+
+		if hasTest {
+			// create a corresponding test crate target
+			if testRule == nil {
+				testRule = rule.NewRule("rust_test", ruleData.rule.Name()+"_test")
+				testRule.SetAttr("crate", ":"+ruleData.rule.Name())
+			}
+
+			result.Gen = append(result.Gen, testRule)
+			result.Imports = append(result.Imports, RuleData{
+				rule:        testRule,
+				responses:   ruleData.responses,
+				testedCrate: ruleData.rule,
+			})
+		} else {
+			// TODO: remove test target if we no longer have any tests
 		}
 	}
 

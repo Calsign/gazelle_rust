@@ -94,6 +94,11 @@ impl<'ast> Default for AstVisitor<'ast> {
 
 impl<'ast> AstVisitor<'ast> {
     fn add_import(&mut self, ident: &'ast syn::Ident) {
+        if ident == "crate" {
+            // "crate" is a keyword referring to the current crate; not an import
+            return;
+        }
+
         if !self.scope_mods.contains(ident) {
             if self.is_test_only_scope() {
                 self.test_imports.insert(ident);

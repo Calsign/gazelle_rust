@@ -10,8 +10,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
-
-	pb "github.com/calsign/gazelle_rust/proto"
 )
 
 var builtins = map[string]bool{
@@ -69,22 +67,44 @@ func (*rustLang) CrossResolve(c *config.Config, ix *resolve.RuleIndex,
 }
 
 func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
-	rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
+	rc *repo.RemoteCache, r *rule.Rule, ruleData interface{}, from label.Label) {
 
 	cfg := l.GetConfig(c)
 
 	if SliceContains(commonDefs, r.Kind()) {
-		files := imports.([]*pb.RustImportsResponse)
+		ruleData := ruleData.(RuleData)
 		deps := map[label.Label]bool{}
 		procMacroDeps := map[label.Label]bool{}
 
-		for _, response := range files {
-			imports := response.GetImports()
+		var crateName string
+		if ruleData.testedCrate != nil {
+			// if this is an associated rust_test, the crate name is the one from the tested target
+			crateName = getCrateName(ruleData.testedCrate)
+		} else {
+			crateName = getCrateName(r)
+		}
+
+		for _, response := range ruleData.responses {
+			var imports []string
+
 			if r.Kind() == "rust_test" {
-				imports = append(imports, response.GetTestImports()...)
+				if ruleData.testedCrate == nil {
+					// this is a standalone test
+					imports = append(response.GetImports(), response.GetTestImports()...)
+				} else {
+					// this is a test associated with another target; don't duplicate the deps
+					imports = response.GetTestImports()
+				}
+			} else {
+				imports = response.GetImports()
 			}
 
 			for _, imp := range imports {
+				if imp == crateName {
+					// you are allowed to import yourself
+					continue
+				}
+
 				is_proc_macro := false
 
 				label, found := l.resolveCrate(cfg, c, ix, l.Name(), imp)

@@ -1,7 +1,7 @@
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_proc_macro")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_proc_macro", "rust_test")
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
-# Tell gazelle_rust where crate_universe dependencies come from.
+# Tell gazelle_rust where crate_universe dependencies come from:
 
 # gazelle:rust_lockfile cargo.bazel.lock
 # gazelle:rust_crates_prefix @crates//:
@@ -18,11 +18,14 @@ gazelle(
 # rust_binary or rust_test, and gazelle_rust will respect those changes.
 rust_library(
     name = "lib",
-    srcs = ["lib.rs"],
+    srcs = [
+        "helper.rs",
+        "lib.rs",
+    ],
 )
 
-# Sample binary. gazelle_rust automatically adds the library dependency on lib and the crate_universe
-# dependency on clap.
+# Sample binary. gazelle_rust automatically adds the library dependency on lib and the
+# crate_universe dependency on clap.
 rust_binary(
     name = "main",
     srcs = ["main.rs"],
@@ -31,6 +34,20 @@ rust_binary(
         ":lib",
         "@crates//:clap",
     ],
+)
+
+# Test targets are automatically created for targets that define inline tests. Test-only
+# dependencies are correctly added to the test target.
+rust_test(
+    name = "lib_test",
+    crate = ":lib",
+    proc_macro_deps = [":macro_lib"],
+)
+
+# Standalone test targets work too.
+rust_test(
+    name = "standalone_test",
+    srcs = ["standalone_test.rs"],
 )
 
 # proc_macro crates are handled correctly.
