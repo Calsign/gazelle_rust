@@ -65,7 +65,7 @@ func getTestCrate(rule *rule.Rule, repo string, pkg string) string {
 	return ""
 }
 
-var ruleCloneAttrs = []string{"srcs"}
+var ruleCloneAttrs = []string{"srcs", "crate"}
 
 // It's nice to be able to re-use existing Rules so that we can resolve them but preserve the
 // grouping of srcs, which is not something Gazelle handles natively. By making a new rule with the
