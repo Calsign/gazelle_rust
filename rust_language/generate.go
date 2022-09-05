@@ -107,6 +107,11 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 
 	if args.File != nil {
 		for _, rule := range args.File.Rules {
+			// NOTE: Gazelle expects us to create rules using the un-mapped kinds. Since we are
+			// re-creating an existing rule, the associated kind is the mapped one, and we need to
+			// reset it. It is probably a bug that Gazelle does not already handle this for us.
+			rule.SetKind(l.GetMappedKindInverse(args.Config, rule.Kind()))
+
 			if SliceContains(commonDefs, rule.Kind()) {
 				responses := []*pb.RustImportsResponse{}
 

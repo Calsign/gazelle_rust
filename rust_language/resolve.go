@@ -138,8 +138,16 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 			}
 		}
 
-		r.SetAttr("deps", finalizeDeps(deps, from))
-		r.SetAttr("proc_macro_deps", finalizeDeps(procMacroDeps, from))
+		maybeSetAttrStrings(r, "deps", finalizeDeps(deps, from))
+		maybeSetAttrStrings(r, "proc_macro_deps", finalizeDeps(procMacroDeps, from))
+	}
+}
+
+func maybeSetAttrStrings(r *rule.Rule, attr string, val []string) {
+	if len(val) > 0 {
+		r.SetAttr(attr, val)
+	} else {
+		r.DelAttr(attr)
 	}
 }
 

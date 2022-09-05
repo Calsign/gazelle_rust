@@ -26,6 +26,7 @@ type rustConfig struct {
 	LockfileCrates     *LockfileCrates
 	CratesPrefix       string
 	ProcMacroOverrides map[string]bool
+	KindMapInverse     map[string]string
 }
 
 type rustLang struct {
@@ -101,6 +102,7 @@ func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
 			LockfileCrates:     EmptyLockfileCrates(),
 			CratesPrefix:       "",
 			ProcMacroOverrides: make(map[string]bool),
+			KindMapInverse:     make(map[string]string),
 		}
 	}
 	return c.Exts[l.Name()].(*rustConfig)
@@ -132,5 +134,17 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 				cfg.ProcMacroOverrides[split[0]] = val
 			}
 		}
+	}
+
+	for k, v := range c.KindMap {
+		cfg.KindMapInverse[v.KindName] = k
+	}
+}
+
+func (l *rustLang) GetMappedKindInverse(c *config.Config, kind string) string {
+	if mapped, ok := l.GetConfig(c).KindMapInverse[kind]; ok {
+		return mapped
+	} else {
+		return kind
 	}
 }
