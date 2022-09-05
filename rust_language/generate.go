@@ -65,6 +65,22 @@ func getTestCrate(rule *rule.Rule, repo string, pkg string) string {
 	return ""
 }
 
+var ruleCloneAttrs = []string{"srcs"}
+
+// It's nice to be able to re-use existing Rules so that we can resolve them but preserve the
+// grouping of srcs, which is not something Gazelle handles natively. By making a new rule with the
+// attrs that we want to preserve (e.g., srcs), we preserve the existing groupings. If we were to
+// reuse the existing rule without cloning it, certain things like #keep comments stop working.
+func CloneRule(oldRule *rule.Rule) *rule.Rule {
+	newRule := rule.NewRule(oldRule.Kind(), oldRule.Name())
+	for _, attr := range ruleCloneAttrs {
+		if val := oldRule.Attr(attr); val != nil {
+			newRule.SetAttr(attr, val)
+		}
+	}
+	return newRule
+}
+
 func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	result := language.GenerateResult{}
 
@@ -106,7 +122,9 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 	}
 
 	if args.File != nil {
-		for _, rule := range args.File.Rules {
+		for _, existingRule := range args.File.Rules {
+			rule := CloneRule(existingRule)
+
 			// NOTE: Gazelle expects us to create rules using the un-mapped kinds. Since we are
 			// re-creating an existing rule, the associated kind is the mapped one, and we need to
 			// reset it. It is probably a bug that Gazelle does not already handle this for us.
@@ -152,13 +170,16 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 			}
 		}
 
-		testRule := testRules[ruleData.rule.Name()]
+		existingTestRule := testRules[ruleData.rule.Name()]
 
 		if hasTest {
 			// create a corresponding test crate target
-			if testRule == nil {
+			var testRule *rule.Rule
+			if existingTestRule == nil {
 				testRule = rule.NewRule("rust_test", ruleData.rule.Name()+"_test")
 				testRule.SetAttr("crate", ":"+ruleData.rule.Name())
+			} else {
+				testRule = CloneRule(existingTestRule)
 			}
 
 			result.Gen = append(result.Gen, testRule)
