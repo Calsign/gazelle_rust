@@ -50,7 +50,7 @@ pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
     })
 }
 
-fn filter_imports<'ast>(imports: HashSet<Ident>) -> Vec<String> {
+fn filter_imports(imports: HashSet<Ident>) -> Vec<String> {
     imports
         .into_iter()
         .filter_map(|ident| {
@@ -97,6 +97,8 @@ impl<'ast> PartialEq<&str> for Ident<'ast> {
 }
 
 impl<'ast> Ident<'ast> {
+    // NOTE: this is just matching the wrapping the implementation in syn::Ident
+    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         match self {
             Self::Ref(ident) => ident.to_string(),

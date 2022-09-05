@@ -1,0 +1,4 @@
+exports_files(
+    srcs = ["run_gofmt.sh"],
+    visibility = ["//visibility:public"],
+)

@@ -1,4 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("@io_bazel_rules_go//go:def.bzl", "nogo")
 
 # gazelle:exclude build
 # gazelle:exclude example
@@ -43,3 +44,10 @@ gazelle(
 
 # NOTE: need to use the version of serde_json from crate_universe so that it matches
 # gazelle:resolve rust serde_json @rules_rust//crate_universe/3rdparty/crates:serde_json
+
+# NOTE: would like to use more checks, but the full suite doesn't succeed on some external libraries
+nogo(
+    name = "nogo",
+    vet = True,
+    visibility = ["//visibility:public"],
+)

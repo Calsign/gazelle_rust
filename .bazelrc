@@ -2,4 +2,17 @@ build --symlink_prefix=build/bazel-
 
 test --test_output=errors
 
-build:ci --keep_going --experimental_scale_timeouts=3
+# rustfmt aspect
+build:rustfmt --aspects=@rules_rust//rust:defs.bzl%rustfmt_aspect
+build:rustfmt --output_groups=+rustfmt_checks
+
+# clippy aspect
+build:clippy --aspects=@rules_rust//rust:defs.bzl%rust_clippy_aspect
+build:clippy --output_groups=+clippy_checks
+
+build:check --config=rustfmt
+
+# always run clippy
+build --config=clippy
+
+build:ci --keep_going --experimental_scale_timeouts=3 --config=check

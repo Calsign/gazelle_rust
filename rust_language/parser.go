@@ -75,7 +75,7 @@ func ReadResponse[M proto.Message](p *Parser, response M) error {
 	}
 	size, n := protowire.ConsumeFixed32(buf[:sf32])
 	if n != sf32 {
-		log.Fatal("n: %v\n", n)
+		log.Fatalf("n: %v\n", n)
 	}
 	if size > uint32(len(buf)) {
 		// grow buffer as neeeded

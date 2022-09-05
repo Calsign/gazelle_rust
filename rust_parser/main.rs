@@ -45,7 +45,7 @@ fn handle_lockfile_crates_request(
     };
 
     let mut response = LockfileCratesResponse::default();
-    response.crates = RepeatedField::from_vec(crates);
+    response.set_crates(RepeatedField::from_vec(crates));
 
     Ok(response)
 }

@@ -38,9 +38,9 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
 
         if let Some(library_target_name) = &crate_.library_target_name {
             let mut package = Package::default();
-            package.name = crate_.name.clone();
-            package.crate_name = library_target_name.to_string();
-            package.proc_macro = is_proc_macro;
+            package.set_name(crate_.name.clone());
+            package.set_crate_name(library_target_name.to_string());
+            package.set_proc_macro(is_proc_macro);
 
             crates.push(package);
         }
@@ -70,7 +70,7 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
 }
 
 pub fn is_workspace_target(name: &str) -> bool {
-    return name == "direct-cargo-bazel-deps";
+    name == "direct-cargo-bazel-deps"
 }
 
 /// Cargo lockfiles don't indicate whether a crate is a proc_macro, so we guess. If a crate depends

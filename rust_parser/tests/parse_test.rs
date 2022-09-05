@@ -50,7 +50,7 @@ lazy_static::lazy_static! {
     ];
 }
 
-fn assert_eq_vecs(actual: &Vec<String>, expected: &Vec<String>) {
+fn assert_eq_vecs(actual: &[String], expected: &[String]) {
     let actual_set: HashSet<_> = actual.iter().collect();
     let expected_set: HashSet<_> = expected.iter().collect();
     if actual_set != expected_set {
@@ -98,7 +98,7 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
                 .expected_imports
                 .iter()
                 .map(|s| s.to_string())
-                .collect(),
+                .collect::<Vec<_>>(),
         );
         assert_eq_vecs(
             &rust_imports.test_imports,
@@ -106,7 +106,7 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
                 .expected_test_imports
                 .iter()
                 .map(|s| s.to_string())
-                .collect(),
+                .collect::<Vec<_>>(),
         );
     }
 
