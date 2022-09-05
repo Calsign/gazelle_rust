@@ -1,3 +1,5 @@
 build --symlink_prefix=build/bazel-
 
 test --test_output=errors
+
+build:ci --keep_going --experimental_scale_timeouts=3

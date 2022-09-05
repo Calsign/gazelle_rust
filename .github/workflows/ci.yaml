@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tmate_debug:
+        description: 'Run tmate for debugging'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: bazel cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: ${{ runner.os }}-${{ github.ref }}
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: tmate debugging
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tmate_debug && always() }}
+
+      - name: build and test
+        run: bazel test //... --config ci
+
+      - name: build and test example
+        run: bazel test //...
+        working-directory: ./example
