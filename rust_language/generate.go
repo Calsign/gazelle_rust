@@ -58,19 +58,21 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 
 	if args.File != nil {
 		for _, rule := range args.File.Rules {
-			responses := []*pb.RustImportsResponse{}
+			if SliceContains(commonDefs, rule.Kind()) {
+				responses := []*pb.RustImportsResponse{}
 
-			for _, file := range rule.AttrStrings("srcs") {
-				filesInExistingRules[file] = true
+				for _, file := range rule.AttrStrings("srcs") {
+					filesInExistingRules[file] = true
 
-				if strings.HasSuffix(file, ".rs") {
-					response := l.parseFile(file, args)
-					responses = append(responses, response)
+					if strings.HasSuffix(file, ".rs") {
+						response := l.parseFile(file, args)
+						responses = append(responses, response)
+					}
 				}
-			}
 
-			result.Gen = append(result.Gen, rule)
-			result.Imports = append(result.Imports, responses)
+				result.Gen = append(result.Gen, rule)
+				result.Imports = append(result.Imports, responses)
+			}
 		}
 	}
 

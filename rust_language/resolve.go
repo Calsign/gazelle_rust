@@ -79,7 +79,12 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 		procMacroDeps := map[label.Label]bool{}
 
 		for _, response := range files {
-			for _, imp := range response.GetImports() {
+			imports := response.GetImports()
+			if r.Kind() == "rust_test" {
+				imports = append(imports, response.GetTestImports()...)
+			}
+
+			for _, imp := range imports {
 				is_proc_macro := false
 
 				label, found := l.resolveCrate(cfg, c, ix, l.Name(), imp)
