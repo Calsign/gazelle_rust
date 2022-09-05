@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "rust_language",
     srcs = [
+        "builtins.go",
         "generate.go",
         "lang.go",
         "lockfile_crates.go",

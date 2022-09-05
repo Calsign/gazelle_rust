@@ -12,16 +12,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-var builtins = map[string]bool{
-	"std":        true,
-	"core":       true,
-	"proc_macro": true,
-}
-
-var provided = map[string]label.Label{
-	"runfiles": label.New("rules_rust", "tools/runfiles", "runfiles"),
-}
-
 func getCrateName(r *rule.Rule) string {
 	crateName := r.AttrString("crate_name")
 	if crateName == "" {
@@ -158,7 +148,7 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 		Imp:  imp,
 	}
 
-	if builtins[spec.Imp] {
+	if Builtins[spec.Imp] {
 		return nil, true
 	} else if override, ok := resolve.FindRuleWithOverride(c, spec, l.Name()); ok {
 		return &override, true
@@ -180,7 +170,7 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 			log.Printf("multiple matches found for %s: [%s]\n", spec.Imp, strings.Join(candidateLabels, ", "))
 			return nil, true
 		}
-	} else if override, ok := provided[spec.Imp]; ok {
+	} else if override, ok := Provided[spec.Imp]; ok {
 		return &override, true
 	} else {
 		return nil, false
