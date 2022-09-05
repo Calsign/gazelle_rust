@@ -11,7 +11,9 @@ use x::X;
 use test_duplicate;
 
 // TODO: derives aren't detected yet
-#[derive(derive_1::Something)]
+#[derive(test_derive_1::Something)]
+struct X {}
+
 fn main() {
     println!("Hello, world!");
 

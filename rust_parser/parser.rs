@@ -40,7 +40,7 @@ pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
     let test_imports = visitor
         .test_imports
         .difference(&visitor.imports)
-        .copied()
+        .cloned()
         .collect();
 
     Ok(RustImports {
@@ -50,7 +50,7 @@ pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
     })
 }
 
-fn filter_imports<'ast>(imports: HashSet<&'ast syn::Ident>) -> Vec<String> {
+fn filter_imports<'ast>(imports: HashSet<Ident>) -> Vec<String> {
     imports
         .into_iter()
         .filter_map(|ident| {
@@ -66,10 +66,49 @@ fn filter_imports<'ast>(imports: HashSet<&'ast syn::Ident>) -> Vec<String> {
         .collect()
 }
 
+// Macros aren't parsed as part of the overall AST, so when we parse them we get an owned value.
+// This approach allows us to store both the references and the owned values together, minimzing
+// clones.
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+enum Ident<'ast> {
+    Ref(&'ast syn::Ident),
+    Owned(syn::Ident),
+}
+
+impl<'ast> From<&'ast syn::Ident> for Ident<'ast> {
+    fn from(ident: &'ast syn::Ident) -> Self {
+        Self::Ref(ident)
+    }
+}
+
+impl<'ast> From<syn::Ident> for Ident<'ast> {
+    fn from(ident: syn::Ident) -> Self {
+        Self::Owned(ident)
+    }
+}
+
+impl<'ast> PartialEq<&str> for Ident<'ast> {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            Self::Ref(ident) => ident == other,
+            Self::Owned(ident) => ident == other,
+        }
+    }
+}
+
+impl<'ast> Ident<'ast> {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Ref(ident) => ident.to_string(),
+            Self::Owned(ident) => ident.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 struct Scope<'ast> {
     /// mods in scope
-    mods: Vec<&'ast syn::Ident>,
+    mods: Vec<Ident<'ast>>,
     /// whether this scope is behind #[test] or #[cfg(test)]
     is_test_only: bool,
 }
@@ -77,13 +116,13 @@ struct Scope<'ast> {
 #[derive(Debug)]
 struct AstVisitor<'ast> {
     /// crates that are imported
-    imports: HashSet<&'ast syn::Ident>,
+    imports: HashSet<Ident<'ast>>,
     /// crates that are imported in test-only configurations
-    test_imports: HashSet<&'ast syn::Ident>,
+    test_imports: HashSet<Ident<'ast>>,
     /// stack of mods in scope
     mod_stack: VecDeque<Scope<'ast>>,
     /// all mods that are currently in scope (including parent scopes)
-    scope_mods: HashSet<&'ast syn::Ident>,
+    scope_mods: HashSet<Ident<'ast>>,
     /// collected hints
     hints: Hints,
 }
@@ -103,13 +142,15 @@ impl<'ast> Default for AstVisitor<'ast> {
 }
 
 impl<'ast> AstVisitor<'ast> {
-    fn add_import(&mut self, ident: &'ast syn::Ident) {
+    fn add_import<I: Into<Ident<'ast>>>(&mut self, ident: I) {
+        let ident = ident.into();
+
         if ident == "crate" {
             // "crate" is a keyword referring to the current crate; not an import
             return;
         }
 
-        if !self.scope_mods.contains(ident) {
+        if !self.scope_mods.contains(&ident) {
             if self.is_test_only_scope() {
                 self.test_imports.insert(ident);
             } else {
@@ -118,9 +159,11 @@ impl<'ast> AstVisitor<'ast> {
         }
     }
 
-    fn add_mod(&mut self, ident: &'ast syn::Ident) {
-        if !self.scope_mods.contains(ident) {
-            self.scope_mods.insert(ident);
+    fn add_mod<I: Into<Ident<'ast>>>(&mut self, ident: I) {
+        let ident = ident.into();
+
+        if !self.scope_mods.contains(&ident) {
+            self.scope_mods.insert(ident.clone());
             self.mod_stack.back_mut().unwrap().mods.push(ident);
         }
     }
@@ -137,7 +180,7 @@ impl<'ast> AstVisitor<'ast> {
 
     fn pop_scope(&mut self) {
         for rename in self.mod_stack.pop_back().expect("hit bottom of stack").mods {
-            self.scope_mods.remove(rename);
+            self.scope_mods.remove(&rename);
         }
     }
 
@@ -147,6 +190,33 @@ impl<'ast> AstVisitor<'ast> {
 
     fn is_test_only_scope(&self) -> bool {
         self.mod_stack.back().unwrap().is_test_only
+    }
+
+    fn visit_type_attrs(&mut self, attrs: &'ast Vec<syn::Attribute>) {
+        // parse #[derive(A, B, ...)]
+        for attr in attrs {
+            if let Ok(syn::Meta::List(list)) = attr.parse_meta() {
+                if let Some(ident) = list.path.get_ident() {
+                    if ident == "derive" {
+                        for nested in list.nested {
+                            if let syn::NestedMeta::Meta(syn::Meta::Path(path)) = nested {
+                                if path.segments.len() > 1 {
+                                    // this dance moves it out to avoid a clone
+                                    self.add_import(
+                                        path.segments
+                                            .into_pairs()
+                                            .next()
+                                            .unwrap()
+                                            .into_value()
+                                            .ident,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -207,19 +277,14 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
 
         // parse #[cfg(test)]
         for attr in &node.attrs {
-            if attr.style == syn::AttrStyle::Outer
-                && attr.path.segments.len() == 1
-                && attr.path.segments[0].ident == "cfg"
-            {
-                if let Some(proc_macro2::TokenTree::Group(group)) =
-                    token_stream_single_item(attr.tokens.clone())
-                {
-                    if group.delimiter() == proc_macro2::Delimiter::Parenthesis {
-                        if let Some(proc_macro2::TokenTree::Ident(ident)) =
-                            token_stream_single_item(group.stream())
-                        {
-                            if ident == "test" {
-                                is_test_only = true;
+            if let Ok(syn::Meta::List(list)) = attr.parse_meta() {
+                if let Some(ident) = list.path.get_ident() {
+                    if ident == "cfg" && list.nested.len() == 1 {
+                        if let syn::NestedMeta::Meta(syn::Meta::Path(path)) = &list.nested[0] {
+                            if let Some(ident) = path.get_ident() {
+                                if ident == "test" {
+                                    is_test_only = true;
+                                }
                             }
                         }
                     }
@@ -241,13 +306,14 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
             self.hints.has_main = true;
         } else {
             for attr in &node.attrs {
-                if attr.style == syn::AttrStyle::Outer && attr.path.segments.len() == 1 {
-                    let name = &attr.path.segments[0].ident;
-                    if name == "test" {
-                        self.hints.has_test = true;
-                        is_test_only = true;
-                    } else if name == "proc_macro" {
-                        self.hints.has_proc_macro = true;
+                if let Ok(syn::Meta::Path(path)) = attr.parse_meta() {
+                    if let Some(ident) = path.get_ident() {
+                        if ident == "test" {
+                            self.hints.has_test = true;
+                            is_test_only = true;
+                        } else if ident == "proc_macro" {
+                            self.hints.has_proc_macro = true;
+                        }
                     }
                 }
             }
@@ -257,16 +323,19 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         visit::visit_item_fn(self, node);
         self.pop_scope();
     }
-}
 
-/// Helper for parsing a single TokenTree from a TokenStream.
-fn token_stream_single_item(stream: proc_macro2::TokenStream) -> Option<proc_macro2::TokenTree> {
-    let mut iter = stream.into_iter();
-    let first = iter.next();
-    let second = iter.next();
-    if let (Some(first), None) = (first, second) {
-        Some(first)
-    } else {
-        None
+    fn visit_item_struct(&mut self, node: &'ast syn::ItemStruct) {
+        self.visit_type_attrs(&node.attrs);
+        visit::visit_item_struct(self, node);
+    }
+
+    fn visit_item_enum(&mut self, node: &'ast syn::ItemEnum) {
+        self.visit_type_attrs(&node.attrs);
+        visit::visit_item_enum(self, node);
+    }
+
+    fn visit_item_type(&mut self, node: &'ast syn::ItemType) {
+        self.visit_type_attrs(&node.attrs);
+        visit::visit_item_type(self, node);
     }
 }

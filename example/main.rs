@@ -1,6 +1,6 @@
 use clap::Parser;
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Debug)]
 struct Args {
     message: Option<String>,
 }
