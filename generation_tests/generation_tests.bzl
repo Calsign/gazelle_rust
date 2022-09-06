@@ -8,7 +8,4 @@ def generation_tests():
             name = dir,
             gazelle_binary = "//:gazelle_bin",
             test_data = native.glob([dir + "/**"]),
-            # TODO: It seems like the parser <--> language plugin streams get crossed if the tests
-            # run in parallel. Figure out why.
-            tags = ["exclusive"],
         )

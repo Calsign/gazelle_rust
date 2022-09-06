@@ -66,7 +66,7 @@ func (p *Parser) WriteRequest(request *pb.Request) error {
 }
 
 func ReadResponse[M proto.Message](p *Parser, response M) error {
-	n, err := p.stdout.Read(buf[:sf32])
+	n, err := io.ReadFull(p.stdout, buf[:sf32])
 	if n != sf32 {
 		return errors.New("invalid size")
 	}
@@ -81,7 +81,7 @@ func ReadResponse[M proto.Message](p *Parser, response M) error {
 		// grow buffer as neeeded
 		buf = make([]byte, size)
 	}
-	n, err = p.stdout.Read(buf[:size])
+	n, err = io.ReadFull(p.stdout, buf[:size])
 	if err != nil {
 		return err
 	}
