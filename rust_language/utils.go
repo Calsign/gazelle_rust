@@ -39,10 +39,14 @@ func (l *rustLang) Log(c *config.Config, level logLevel, from interface{}, msg s
 		log.Panicf("unsupported from type: %v", from)
 	}
 
+	if fromStr != "" {
+		fromStr = fmt.Sprintf("%s: ", fromStr)
+	}
+
 	if level == logFatal || (level != logInfo && cfg.Check) {
-		log.Fatalf("%s: %s", fromStr, fmtMsg)
+		log.Fatalf("%s%s", fromStr, fmtMsg)
 	} else {
-		log.Printf("%s: %s", fromStr, fmtMsg)
+		log.Printf("%s%s", fromStr, fmtMsg)
 	}
 }
 

@@ -294,7 +294,6 @@ _NORMAL_DEPENDENCIES = {
             "cargo-lock": "@crates_vendor__cargo-lock-8.0.2//:cargo_lock",
             "clap": "@crates_vendor__clap-3.2.20//:clap",
             "lazy_static": "@crates_vendor__lazy_static-1.4.0//:lazy_static",
-            "proc-macro2": "@crates_vendor__proc-macro2-1.0.43//:proc_macro2",
             "syn": "@crates_vendor__syn-1.0.99//:syn",
         },
     },

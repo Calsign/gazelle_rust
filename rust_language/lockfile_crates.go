@@ -75,11 +75,11 @@ func (l *rustLang) NewLockfileCrates(c *config.Config, lockfilePath string, carg
 	return lockfileCrates
 }
 
-func (l *LockfileCrates) UnusedCrates() []string {
+func (l *LockfileCrates) UnusedCrates(allowedUnusedCrates map[string]bool) []string {
 	unusedCrates := []string{}
 
 	for _, crate := range l.Crates {
-		if !l.UsedCrates[crate] {
+		if !l.UsedCrates[crate] && !allowedUnusedCrates[crate] {
 			unusedCrates = append(unusedCrates, crate)
 		}
 	}

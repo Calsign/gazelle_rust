@@ -19,6 +19,7 @@ var (
 	cargoLockfileDirective     string = "rust_cargo_lockfile"
 	cratesPrefixDirective      string = "rust_crates_prefix"
 	procMacroOverrideDirective string = "rust_override_proc_macro"
+	allowUnusedCrateDirective  string = "rust_allow_unused_crate"
 	checkFlag                  string = "rust_check"
 )
 
@@ -31,8 +32,9 @@ type rustConfig struct {
 }
 
 type scopedCrateSet struct {
-	LockfileCrates *LockfileCrates
-	Pkg            string
+	LockfileCrates      *LockfileCrates
+	Pkg                 string
+	AllowedUnusedCrates map[string]bool
 }
 
 type rustLang struct {
@@ -107,8 +109,8 @@ func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 }
 
 func (*rustLang) KnownDirectives() []string {
-	return []string{lockfileDirective, cargoLockfileDirective,
-		cratesPrefixDirective, procMacroOverrideDirective}
+	return []string{lockfileDirective, cargoLockfileDirective, cratesPrefixDirective,
+		procMacroOverrideDirective, allowUnusedCrateDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
@@ -131,10 +133,21 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 		// crate_universe or vendored crates in the same repo.
 		lockfile := path.Join(c.RepoRoot, rel, directive.Value)
 		cfg.LockfileCrates = l.NewLockfileCrates(c, lockfile, cargo)
+
+		allowedUnusedCrates := make(map[string]bool)
+		if f != nil {
+			for _, directive := range f.Directives {
+				if directive.Key == allowUnusedCrateDirective {
+					allowedUnusedCrates[directive.Value] = true
+				}
+			}
+		}
+
 		// Track all known crate sets.
 		l.AllCrateSets = append(l.AllCrateSets, scopedCrateSet{
-			LockfileCrates: cfg.LockfileCrates,
-			Pkg:            rel,
+			LockfileCrates:      cfg.LockfileCrates,
+			Pkg:                 rel,
+			AllowedUnusedCrates: allowedUnusedCrates,
 		})
 	}
 
@@ -164,6 +177,18 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 
 	for k, v := range c.KindMap {
 		cfg.KindMapInverse[v.KindName] = k
+	}
+}
+
+func (l *rustLang) DoneResolving(c *config.Config) {
+	// NOTE: This is part of the gazelle interface as the result of a patch. If the patch is not
+	// applied, things will still work, but you will not get support for reporting unused crates.
+
+	for _, crateSet := range l.AllCrateSets {
+		unusedCrates := crateSet.LockfileCrates.UnusedCrates(crateSet.AllowedUnusedCrates)
+		if len(unusedCrates) > 0 {
+			l.Log(c, logWarn, crateSet.Pkg, "unused crates: [%s]", strings.Join(unusedCrates, ", "))
+		}
 	}
 }
 

@@ -14,9 +14,6 @@ crates_vendor(
             ],
             version = "1.0",
         ),
-        "proc-macro2": crate.spec(
-            version = "1.0",
-        ),
         "clap": crate.spec(
             features = ["derive"],
             version = "3.2",
