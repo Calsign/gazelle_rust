@@ -30,13 +30,20 @@ type rustConfig struct {
 	Check              bool
 }
 
+type scopedCrateSet struct {
+	LockfileCrates *LockfileCrates
+	Pkg            string
+}
+
 type rustLang struct {
-	Parser *Parser
+	Parser       *Parser
+	AllCrateSets []scopedCrateSet
 }
 
 func NewLanguage() language.Language {
 	return &rustLang{
-		Parser: NewParser(),
+		Parser:       NewParser(),
+		AllCrateSets: []scopedCrateSet{},
 	}
 }
 
@@ -119,14 +126,24 @@ func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
 func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 	cfg := l.GetConfig(c)
 
+	addCrateSet := func(directive rule.Directive, cargo bool) {
+		// Storing the crate set in the configuration allows for multiple instances of
+		// crate_universe or vendored crates in the same repo.
+		lockfile := path.Join(c.RepoRoot, rel, directive.Value)
+		cfg.LockfileCrates = l.NewLockfileCrates(c, lockfile, cargo)
+		// Track all known crate sets.
+		l.AllCrateSets = append(l.AllCrateSets, scopedCrateSet{
+			LockfileCrates: cfg.LockfileCrates,
+			Pkg:            rel,
+		})
+	}
+
 	if f != nil {
 		for _, directive := range f.Directives {
 			if directive.Key == lockfileDirective {
-				lockfile := path.Join(c.RepoRoot, rel, directive.Value)
-				cfg.LockfileCrates = l.NewLockfileCrates(c, lockfile, false)
+				addCrateSet(directive, false)
 			} else if directive.Key == cargoLockfileDirective {
-				lockfile := path.Join(c.RepoRoot, rel, directive.Value)
-				cfg.LockfileCrates = l.NewLockfileCrates(c, lockfile, true)
+				addCrateSet(directive, true)
 			} else if directive.Key == cratesPrefixDirective {
 				cfg.CratesPrefix = directive.Value
 			} else if directive.Key == procMacroOverrideDirective {

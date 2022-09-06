@@ -157,6 +157,10 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 		if err != nil {
 			l.Log(c, logFatal, from, "bad %s: %v\n", cratesPrefixDirective, err)
 		}
+
+		// track this crate as used
+		cfg.LockfileCrates.UsedCrates[crateName] = true
+
 		return &label, true
 	} else if candidates := ix.FindRulesByImportWithConfig(c, spec, l.Name()); len(candidates) >= 1 {
 		if len(candidates) == 1 {

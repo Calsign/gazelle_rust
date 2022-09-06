@@ -16,11 +16,14 @@ var procMacroOverrides map[string]bool = map[string]bool{
 
 type LockfileCrates struct {
 	Crates map[resolve.ImportSpec]string
+	// track which crates have been used so that we can report unused crates
+	UsedCrates map[string]bool
 }
 
 func EmptyLockfileCrates() *LockfileCrates {
 	return &LockfileCrates{
-		Crates: make(map[resolve.ImportSpec]string),
+		Crates:     make(map[resolve.ImportSpec]string),
+		UsedCrates: make(map[string]bool),
 	}
 }
 
@@ -70,4 +73,16 @@ func (l *rustLang) NewLockfileCrates(c *config.Config, lockfilePath string, carg
 	}
 
 	return lockfileCrates
+}
+
+func (l *LockfileCrates) UnusedCrates() []string {
+	unusedCrates := []string{}
+
+	for _, crate := range l.Crates {
+		if !l.UsedCrates[crate] {
+			unusedCrates = append(unusedCrates, crate)
+		}
+	}
+
+	return unusedCrates
 }

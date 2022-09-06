@@ -200,7 +200,7 @@ func (l *rustLang) parseFile(c *config.Config, file string, args language.Genera
 	request := &pb.RustImportsRequest{FilePath: path.Join(args.Dir, file)}
 	response, err := l.Parser.Parse(request)
 	if err != nil {
-		l.Log(c, logFatal, file, "failed to parse %s: %v", err)
+		l.Log(c, logFatal, file, "failed to parse %s: %v", file, err)
 	}
 	return response
 }
