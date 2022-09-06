@@ -1,0 +1,15 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "lib",
+    srcs = [
+        "a.rs",
+        "b.rs",
+        "lib.rs",
+    ],
+)
+
+rust_library(
+    name = "other",
+    srcs = ["other.rs"],
+)

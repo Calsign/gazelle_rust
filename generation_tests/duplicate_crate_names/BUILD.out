@@ -1,0 +1,18 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "lib1",
+    srcs = ["lib1.rs"],
+    crate_name = "lib",
+)
+
+rust_library(
+    name = "lib2",
+    srcs = ["lib2.rs"],
+    crate_name = "lib",
+)
+
+rust_library(
+    name = "lib3",
+    srcs = ["lib3.rs"],
+)

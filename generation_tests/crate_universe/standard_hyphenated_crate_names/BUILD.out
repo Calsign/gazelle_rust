@@ -1,0 +1,10 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+# gazelle:rust_lockfile Cargo.Bazel.lock
+# gazelle:rust_crates_prefix @crates//:
+
+rust_library(
+    name = "lib",
+    srcs = ["lib.rs"],
+    deps = ["@crates//:float-cmp"],
+)

@@ -1,0 +1,2 @@
+# gazelle:rust_lockfile Cargo.Bazel.lock
+# gazelle:rust_crates_prefix @crates//:

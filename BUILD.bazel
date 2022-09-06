@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "nogo")
 
 # gazelle:exclude build
 # gazelle:exclude example
+# gazelle:exclude generation_tests
 
 # gazelle:rust_cargo_lockfile cargo.lock
 # gazelle:rust_crates_prefix //3rdparty/crates:

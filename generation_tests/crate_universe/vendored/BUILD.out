@@ -1,0 +1,15 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+# gazelle:rust_cargo_lockfile Cargo.lock
+# gazelle:rust_crates_prefix //3rdparty/crates:
+
+exports_files(
+    srcs = ["Cargo.lock"],
+    visibility = ["//visibility:public"],
+)
+
+rust_library(
+    name = "lib",
+    srcs = ["lib.rs"],
+    deps = ["//3rdparty/crates:serde"],
+)

@@ -1,0 +1,34 @@
+rust_binary(
+    name = "binary",
+    srcs = ["binary.rs"],
+)
+
+rust_proc_macro(
+    name = "dummy_proc_macro",
+    srcs = ["dummy_proc_macro.rs"],
+)
+
+rust_library(
+    name = "lib",
+    srcs = ["lib.rs"],
+)
+
+rust_library(
+    name = "lib2",
+    srcs = ["lib2.rs"],
+)
+
+rust_shared_library(
+    name = "shared_lib",
+    srcs = ["shared_lib.rs"],
+)
+
+rust_static_library(
+    name = "static_lib",
+    srcs = ["static_lib.rs"],
+)
+
+rust_test(
+    name = "test",
+    srcs = ["test.rs"],
+)

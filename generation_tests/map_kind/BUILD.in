@@ -1,0 +1,23 @@
+# gazelle:map_kind rust_library custom_rust_library //:macros.bzl
+# gazelle:map_kind rust_binary custom_rust_binary //:macros.bzl
+# gazelle:map_kind rust_test custom_rust_test //:macros.bzl
+
+custom_rust_library(
+    name = "existing_lib",
+    srcs = ["existing_lib.rs"],
+)
+
+custom_rust_binary(
+    name = "existing_bin",
+    srcs = ["existing_bin.rs"],
+)
+
+custom_rust_test(
+    name = "existing_test",
+    srcs = ["existing_test.rs"],
+)
+
+custom_rust_test(
+    name = "existing_lib_test",
+    crate = ":existing_lib",
+)

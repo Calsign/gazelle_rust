@@ -1,0 +1,25 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_proc_macro")
+
+rust_proc_macro(
+    name = "another_proc_macro",
+    srcs = ["another_proc_macro.rs"],
+    proc_macro_deps = [":some_proc_macro"],
+)
+
+rust_library(
+    name = "common_lib",
+    srcs = ["common_lib.rs"],
+)
+
+rust_library(
+    name = "lib",
+    srcs = ["lib.rs"],
+    proc_macro_deps = [":some_proc_macro"],
+    deps = [":common_lib"],
+)
+
+rust_proc_macro(
+    name = "some_proc_macro",
+    srcs = ["some_proc_macro.rs"],
+    deps = [":common_lib"],
+)

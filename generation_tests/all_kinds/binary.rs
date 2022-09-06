@@ -1,0 +1,3 @@
+use lib::*;
+
+fn main() {}

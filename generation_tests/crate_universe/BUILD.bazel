@@ -1,0 +1,8 @@
+load("//generation_tests:generation_tests.bzl", "generation_tests")
+
+sh_binary(
+    name = "repin",
+    srcs = ["repin.sh"],
+)
+
+generation_tests()

@@ -1,0 +1,3 @@
+load(":generation_tests.bzl", "generation_tests")
+
+generation_tests()

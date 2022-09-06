@@ -1,0 +1,49 @@
+load("//:macros.bzl", "custom_rust_binary", "custom_rust_library", "custom_rust_test")
+
+# gazelle:map_kind rust_library custom_rust_library //:macros.bzl
+# gazelle:map_kind rust_binary custom_rust_binary //:macros.bzl
+# gazelle:map_kind rust_test custom_rust_test //:macros.bzl
+
+custom_rust_library(
+    name = "existing_lib",
+    srcs = ["existing_lib.rs"],
+)
+
+custom_rust_binary(
+    name = "existing_bin",
+    srcs = ["existing_bin.rs"],
+    deps = [":existing_lib"],
+)
+
+custom_rust_test(
+    name = "existing_test",
+    srcs = ["existing_test.rs"],
+    deps = [":existing_lib"],
+)
+
+custom_rust_test(
+    name = "existing_lib_test",
+    crate = ":existing_lib",
+)
+
+custom_rust_binary(
+    name = "new_bin",
+    srcs = ["new_bin.rs"],
+    deps = [":new_lib"],
+)
+
+custom_rust_library(
+    name = "new_lib",
+    srcs = ["new_lib.rs"],
+)
+
+custom_rust_test(
+    name = "new_test",
+    srcs = ["new_test.rs"],
+    deps = [":new_lib"],
+)
+
+custom_rust_test(
+    name = "new_lib_test",
+    crate = ":new_lib",
+)

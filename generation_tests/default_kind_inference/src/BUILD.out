@@ -1,0 +1,21 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_proc_macro", "rust_test")
+
+rust_library(
+    name = "lib",
+    srcs = ["lib.rs"],
+)
+
+rust_binary(
+    name = "main",
+    srcs = ["main.rs"],
+)
+
+rust_proc_macro(
+    name = "some_proc_macro",
+    srcs = ["some_proc_macro.rs"],
+)
+
+rust_test(
+    name = "some_test",
+    srcs = ["some_test.rs"],
+)

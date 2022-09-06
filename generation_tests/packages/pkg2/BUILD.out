@@ -1,0 +1,7 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "pkg2",
+    srcs = ["pkg2.rs"],
+    deps = ["//pkg1"],
+)

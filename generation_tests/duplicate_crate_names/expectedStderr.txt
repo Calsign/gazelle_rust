@@ -1,0 +1,1 @@
+gazelle: //:lib3: multiple matches found for lib: [//:lib1, //:lib2]
