@@ -43,12 +43,12 @@ jobs:
         run: bazel test //... --config ci
 
       - name: test gazelle invariance
-        run: bazel run //:gazelle -- --mode=diff --rust_check
+        run: bazel run //:gazelle -- --mode=diff --strict
 
       - name: build and test for example
         run: bazel test //...
         working-directory: ./example
 
       - name: test gazelle invariance for example
-        run: bazel run //:gazelle -- --mode=diff --rust_check
+        run: bazel run //:gazelle -- --mode=diff --strict
         working-directory: ./example
