@@ -2,13 +2,12 @@
 
 use std::collections::HashMap;
 use std::error::Error;
-use std::fs::File;
 use std::path::PathBuf;
 
 use messages_rust_proto::Package;
 
 pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>, Box<dyn Error>> {
-    let lockfile = match File::open(&lockfile_path) {
+    let lockfile_str = match std::fs::read_to_string(&lockfile_path) {
         Err(err) => {
             eprintln!(
                 "Could not open lockfile {}: {}",
@@ -17,9 +16,11 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
             );
             std::process::exit(1);
         }
-        file => file?,
+        read_str => read_str?,
     };
-    let context: cargo_bazel::context::Context = match serde_json::from_reader(lockfile) {
+    // Surprisingly, using serde_json::from_str is much faster than using serde_json::from_reader.
+    // See: https://github.com/serde-rs/json/issues/160
+    let context: cargo_bazel::context::Context = match serde_json::from_str(&lockfile_str) {
         Err(err) => {
             eprintln!(
                 "Could not parse lockfile {}: {}",
