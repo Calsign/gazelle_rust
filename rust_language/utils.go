@@ -19,8 +19,6 @@ const (
 )
 
 func (l *rustLang) Log(c *config.Config, level logLevel, from interface{}, msg string, args ...interface{}) {
-	cfg := l.GetConfig(c)
-
 	fmtMsg := fmt.Sprintf(msg, args...)
 
 	var fromStr string
@@ -43,7 +41,7 @@ func (l *rustLang) Log(c *config.Config, level logLevel, from interface{}, msg s
 		fromStr = fmt.Sprintf("%s: ", fromStr)
 	}
 
-	if level == logFatal || (level != logInfo && cfg.Check) {
+	if level == logFatal || (level != logInfo && c.Strict) {
 		log.Fatalf("%s%s", fromStr, fmtMsg)
 	} else {
 		log.Printf("%s%s", fromStr, fmtMsg)

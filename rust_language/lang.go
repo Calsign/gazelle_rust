@@ -20,7 +20,6 @@ var (
 	cratesPrefixDirective      string = "rust_crates_prefix"
 	procMacroOverrideDirective string = "rust_override_proc_macro"
 	allowUnusedCrateDirective  string = "rust_allow_unused_crate"
-	checkFlag                  string = "rust_check"
 )
 
 type rustConfig struct {
@@ -28,7 +27,6 @@ type rustConfig struct {
 	CratesPrefix       string
 	ProcMacroOverrides map[string]bool
 	KindMapInverse     map[string]string
-	Check              bool
 }
 
 type scopedCrateSet struct {
@@ -94,17 +92,9 @@ func (*rustLang) Loads() []rule.LoadInfo {
 func (*rustLang) Fix(c *config.Config, f *rule.File) {}
 
 func (*rustLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
-	fs.Bool(checkFlag, false, "non-fatal warnings and errors become fatal")
 }
 
 func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
-	cfg := l.GetConfig(c)
-	shouldCheck, err := strconv.ParseBool(fs.Lookup(checkFlag).Value.String())
-	if err != nil {
-		return err
-	}
-	cfg.Check = shouldCheck
-
 	return nil
 }
 
