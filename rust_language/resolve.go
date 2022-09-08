@@ -22,7 +22,8 @@ func getCrateName(r *rule.Rule) string {
 func (l *rustLang) Imports(c *config.Config, r *rule.Rule,
 	f *rule.File) []resolve.ImportSpec {
 
-	specs := []resolve.ImportSpec{}
+	// return nil by default
+	var specs []resolve.ImportSpec
 
 	switch r.Kind() {
 	case "rust_library":
