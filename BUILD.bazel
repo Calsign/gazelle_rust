@@ -13,8 +13,18 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
+# intended for users that just want rust
 gazelle_binary(
     name = "gazelle_bin",
+    languages = [
+        "//rust_language",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# used by this project, which uses both rust and go
+gazelle_binary(
+    name = "gazelle_bin_with_go",
     languages = [
         "//rust_language",
         "@bazel_gazelle//language/go",
@@ -24,7 +34,7 @@ gazelle_binary(
 
 gazelle(
     name = "gazelle",
-    gazelle = ":gazelle_bin",
+    gazelle = ":gazelle_bin_with_go",
 )
 
 # gazelle:prefix github.com/calsign/gazelle_rust
