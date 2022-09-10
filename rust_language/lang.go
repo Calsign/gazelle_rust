@@ -14,12 +14,27 @@ import (
 var (
 	langName          string = "rust"
 	procMacroLangName string = "rust_proc_macro"
+)
 
-	lockfileDirective          string = "rust_lockfile"
-	cargoLockfileDirective     string = "rust_cargo_lockfile"
-	cratesPrefixDirective      string = "rust_crates_prefix"
+// Available directives
+var (
+	// Path to Cargo.Bazel.lock.
+	// Use either rust_lockfile or rust_cargo_lockfile, not both.
+	// Must also specify rust_crates_prefix.
+	lockfileDirective string = "rust_lockfile"
+
+	// Path to Cargo.lock.
+	cargoLockfileDirective string = "rust_cargo_lockfile"
+
+	// Label prefix for external crates, e.g. @crates//:
+	cratesPrefixDirective string = "rust_crates_prefix"
+
+	// Override whether an external crate should be considered a proc_macro crate.
+	// usage: # gazelle:rust_override_proc_macro <crate name> <true|false>
 	procMacroOverrideDirective string = "rust_override_proc_macro"
-	allowUnusedCrateDirective  string = "rust_allow_unused_crate"
+
+	// Remove an external crate from the "unused crates" warning.
+	allowUnusedCrateDirective string = "rust_allow_unused_crate"
 )
 
 type rustConfig struct {
