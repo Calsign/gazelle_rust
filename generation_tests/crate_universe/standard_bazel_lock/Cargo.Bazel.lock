@@ -1,5 +1,5 @@
 {
-  "checksum": "7c46aee0f13e1476483c0dd14a53926833e3cad5126b0d27705aa0a6da55acdd",
+  "checksum": "90e0bf064fe5ef958ae9d5215277f35cf64c621138f167ad5971ffde6825d92c",
   "crates": {
     "direct-cargo-bazel-deps 0.0.1": {
       "name": "direct-cargo-bazel-deps",
@@ -27,7 +27,7 @@
         "deps": {
           "common": [
             {
-              "id": "serde 1.0.144",
+              "id": "serde 1.0.151",
               "target": "serde"
             }
           ],
@@ -38,13 +38,13 @@
       },
       "license": null
     },
-    "serde 1.0.144": {
+    "serde 1.0.151": {
       "name": "serde",
-      "version": "1.0.144",
+      "version": "1.0.151",
       "repository": {
         "Http": {
-          "url": "https://crates.io/api/v1/crates/serde/1.0.144/download",
-          "sha256": "0f747710de3dcd43b88c9168773254e809d8ddbdf9653b84e2554ab219f17860"
+          "url": "https://crates.io/api/v1/crates/serde/1.0.151/download",
+          "sha256": "97fed41fc1a24994d044e6db6935e69511a1153b52c15eb42493b26fa87feba0"
         }
       },
       "targets": [
@@ -85,14 +85,14 @@
         "deps": {
           "common": [
             {
-              "id": "serde 1.0.144",
+              "id": "serde 1.0.151",
               "target": "build_script_build"
             }
           ],
           "selects": {}
         },
         "edition": "2015",
-        "version": "1.0.144"
+        "version": "1.0.151"
       },
       "build_script_attrs": {
         "data_glob": [

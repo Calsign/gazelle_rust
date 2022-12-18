@@ -11,17 +11,17 @@ load("//3rdparty/crates:crates.bzl", "crate_repositories")
 load("@rules_rust//crate_universe:repositories.bzl", "crate_universe_dependencies")
 
 # versions of dependencies
-load(":deps_versions.bzl", "GAZELLE_SHA256", "GAZELLE_VERSION", "RULES_GO_SHA256", "RULES_GO_VERSION")
+load(":deps_versions.bzl", "versions")
 
 def gazelle_rust_dependencies1():
     # go/gazelle
     maybe(
         http_archive,
         name = "io_bazel_rules_go",
-        sha256 = RULES_GO_SHA256,
+        sha256 = versions.RULES_GO_SHA256,
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v{0}/rules_go-v{0}.zip".format(RULES_GO_VERSION),
-            "https://github.com/bazelbuild/rules_go/releases/download/v{0}/rules_go-v{0}.zip".format(RULES_GO_VERSION),
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v{0}/rules_go-v{0}.zip".format(versions.RULES_GO_VERSION),
+            "https://github.com/bazelbuild/rules_go/releases/download/v{0}/rules_go-v{0}.zip".format(versions.RULES_GO_VERSION),
         ],
     )
 
@@ -29,10 +29,10 @@ def gazelle_rust_dependencies1():
         http_archive,
         name = "bazel_gazelle",
         patches = ["@gazelle_rust//patches:bazel-gazelle.patch"],
-        sha256 = GAZELLE_SHA256,
+        sha256 = versions.GAZELLE_SHA256,
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v{0}/bazel-gazelle-v{0}.tar.gz".format(GAZELLE_VERSION),
-            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v{0}/bazel-gazelle-v{0}.tar.gz".format(GAZELLE_VERSION),
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v{0}/bazel-gazelle-v{0}.tar.gz".format(versions.GAZELLE_VERSION),
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v{0}/bazel-gazelle-v{0}.tar.gz".format(versions.GAZELLE_VERSION),
         ],
     )
 

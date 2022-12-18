@@ -153,7 +153,7 @@ def all_crate_deps(
     Args:
         normal (bool, optional): If True, normal dependencies are included in the
             output list.
-        normal_dev (bool, optional): If True, normla dev dependencies will be
+        normal_dev (bool, optional): If True, normal dev dependencies will be
             included in the output list..
         proc_macro (bool, optional): If True, proc_macro dependencies are included
             in the output list.
@@ -222,7 +222,7 @@ def aliases(
     Args:
         normal (bool, optional): If True, normal dependencies are included in the
             output list.
-        normal_dev (bool, optional): If True, normla dev dependencies will be
+        normal_dev (bool, optional): If True, normal dev dependencies will be
             included in the output list..
         proc_macro (bool, optional): If True, proc_macro dependencies are included
             in the output list.
@@ -291,7 +291,7 @@ def aliases(
 _NORMAL_DEPENDENCIES = {
     "": {
         _COMMON_CONDITION: {
-            "serde": "@crates_vendor__serde-1.0.144//:serde",
+            "serde": "@crates_vendor__serde-1.0.151//:serde",
         },
     },
 }
@@ -362,10 +362,10 @@ def crate_repositories():
     """A macro for defining repositories for all generated crates"""
     maybe(
         http_archive,
-        name = "crates_vendor__serde-1.0.144",
-        sha256 = "0f747710de3dcd43b88c9168773254e809d8ddbdf9653b84e2554ab219f17860",
+        name = "crates_vendor__serde-1.0.151",
+        sha256 = "97fed41fc1a24994d044e6db6935e69511a1153b52c15eb42493b26fa87feba0",
         type = "tar.gz",
-        urls = ["https://crates.io/api/v1/crates/serde/1.0.144/download"],
-        strip_prefix = "serde-1.0.144",
-        build_file = Label("@__main__//3rdparty/crates:BUILD.serde-1.0.144.bazel"),
+        urls = ["https://crates.io/api/v1/crates/serde/1.0.151/download"],
+        strip_prefix = "serde-1.0.151",
+        build_file = Label("@//3rdparty/crates:BUILD.serde-1.0.151.bazel"),
     )

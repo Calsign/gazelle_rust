@@ -29,7 +29,7 @@ filegroup(
 # Workspace Member Dependencies
 alias(
     name = "serde",
-    actual = "@crates_vendor__serde-1.0.144//:serde",
+    actual = "@crates_vendor__serde-1.0.151//:serde",
     tags = ["manual"],
 )
 

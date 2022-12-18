@@ -5,13 +5,15 @@ local_repository(
     path = "../../..",
 )
 
+load("@gazelle_rust//:deps_versions.bzl", "versions")
+
 http_archive(
     name = "rules_rust",
     patches = ["@gazelle_rust//patches:rules_rust.patch"],
-    sha256 = "6bfe75125e74155955d8a9854a8811365e6c0f3d33ed700bc17f39e32522c822",
+    sha256 = versions.RULES_RUST_SHA256,
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_rust/releases/download/0.9.0/rules_rust-v0.9.0.tar.gz",
-        "https://github.com/bazelbuild/rules_rust/releases/download/0.9.0/rules_rust-v0.9.0.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_rust/releases/download/{0}/rules_rust-v{0}.tar.gz".format(versions.RULES_RUST_VERSION),
+        "https://github.com/bazelbuild/rules_rust/releases/download/{0}/rules_rust-v{0}.tar.gz".format(versions.RULES_RUST_VERSION),
     ],
 )
 
