@@ -3,16 +3,16 @@ workspace(name = "gazelle_rust")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # versions of dependencies
-load(":deps_versions.bzl", "GAZELLE_SHA256", "GAZELLE_VERSION")
+load(":deps_versions.bzl", "GAZELLE_SHA256", "GAZELLE_VERSION", "RULES_GO_SHA256", "RULES_GO_VERSION")
 
 # Go/Gazelle
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "685052b498b6ddfe562ca7a97736741d87916fe536623afb7da2824c0211c369",
+    sha256 = RULES_GO_SHA256,
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.33.0/rules_go-v0.33.0.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.33.0/rules_go-v0.33.0.zip",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v{0}/rules_go-v{0}.zip".format(RULES_GO_VERSION),
+        "https://github.com/bazelbuild/rules_go/releases/download/v{0}/rules_go-v{0}.zip".format(RULES_GO_VERSION),
     ],
 )
 
