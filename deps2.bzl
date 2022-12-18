@@ -7,12 +7,15 @@ load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_regi
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
 load("@rules_rust//proto:repositories.bzl", "rust_proto_repositories")
 
+# versions of dependencies
+load(":deps_versions.bzl", "GO_VERSION")
+
 def gazelle_rust_dependencies2():
     # go/gazelle
     go_rules_dependencies()
 
     if "go_sdk" not in native.existing_rules():
-        go_register_toolchains(version = "1.18.3")
+        go_register_toolchains(version = GO_VERSION)
 
     gazelle_dependencies()
 

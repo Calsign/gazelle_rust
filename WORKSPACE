@@ -3,7 +3,7 @@ workspace(name = "gazelle_rust")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # versions of dependencies
-load(":deps_versions.bzl", "GAZELLE_SHA256", "GAZELLE_VERSION", "RULES_GO_SHA256", "RULES_GO_VERSION")
+load(":deps_versions.bzl", "GAZELLE_SHA256", "GAZELLE_VERSION", "GO_VERSION", "RULES_GO_SHA256", "RULES_GO_VERSION")
 
 # Go/Gazelle
 
@@ -36,7 +36,7 @@ go_rules_dependencies()
 
 go_register_toolchains(
     nogo = "@//:nogo",
-    version = "1.18.3",
+    version = GO_VERSION,
 )
 
 gazelle_dependencies()
