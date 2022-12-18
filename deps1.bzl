@@ -10,6 +10,9 @@ load("//3rdparty/crates:crates.bzl", "crate_repositories")
 # build crate_universe
 load("@rules_rust//crate_universe:repositories.bzl", "crate_universe_dependencies")
 
+# versions of dependencies
+load(":deps_versions.bzl", "GAZELLE_SHA256", "GAZELLE_VERSION")
+
 def gazelle_rust_dependencies1():
     # go/gazelle
     maybe(
@@ -26,10 +29,10 @@ def gazelle_rust_dependencies1():
         http_archive,
         name = "bazel_gazelle",
         patches = ["@gazelle_rust//patches:bazel-gazelle.patch"],
-        sha256 = "501deb3d5695ab658e82f6f6f549ba681ea3ca2a5fb7911154b5aa45596183fa",
+        sha256 = GAZELLE_SHA256,
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.26.0/bazel-gazelle-v0.26.0.tar.gz",
-            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.26.0/bazel-gazelle-v0.26.0.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v{0}/bazel-gazelle-v{0}.tar.gz".format(GAZELLE_VERSION),
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v{0}/bazel-gazelle-v{0}.tar.gz".format(GAZELLE_VERSION),
         ],
     )
 
