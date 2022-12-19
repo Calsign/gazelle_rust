@@ -25,7 +25,7 @@ rules_rust_dependencies()
 
 rust_register_toolchains(
     edition = "2021",
-    version = "1.63.0",
+    version = "1.66.0",
 )
 
 load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_repository")

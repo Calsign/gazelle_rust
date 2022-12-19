@@ -13,4 +13,7 @@ versions = struct(
     # rules_rust
     RULES_RUST_VERSION = "0.15.0",
     RULES_RUST_SHA256 = "5c2b6745236f8ce547f82eeacbbcc81d736734cc8bd92e60d3e3cdfa6e167bb5",
+
+    # rust
+    RUST_VERSION = "1.66.0",
 )
