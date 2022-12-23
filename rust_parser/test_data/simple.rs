@@ -10,9 +10,11 @@ use x::X;
 
 use test_duplicate;
 
-// TODO: derives aren't detected yet
 #[derive(test_derive_1::Something)]
 struct X {}
+
+#[test_attribute_1::some_macro]
+struct Y {}
 
 fn main() {
     println!("Hello, world!");
