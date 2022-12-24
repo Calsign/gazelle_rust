@@ -22,10 +22,14 @@ message Hints {
     bool has_proc_macro = 3;
 }
 
+// If successful, success = true and hints, imports, and test_imports are set.
+// If there is an unrecoverable error, success = false and error_msg is the error message.
 message RustImportsResponse {
     Hints hints = 1;
     repeated string imports = 2;
     repeated string test_imports = 3;
+    bool success = 4;
+    string error_msg = 5;
 }
 
 message LockfileCratesRequest {

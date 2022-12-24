@@ -162,7 +162,9 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 
 					if strings.HasSuffix(file, ".rs") {
 						response := l.parseFile(args.Config, file, args)
-						responses = append(responses, response)
+						if response != nil {
+							responses = append(responses, response)
+						}
 					}
 				}
 
@@ -174,6 +176,9 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 	for _, file := range args.RegularFiles {
 		if !filesInExistingRules[file] && strings.HasSuffix(file, ".rs") {
 			response := l.parseFile(args.Config, file, args)
+			if response == nil {
+				continue
+			}
 
 			inferredKind := l.inferRuleKind(file, dirname, response)
 
@@ -237,6 +242,13 @@ func (l *rustLang) parseFile(c *config.Config, file string, args language.Genera
 	response, err := l.Parser.Parse(request)
 	if err != nil {
 		l.Log(c, logFatal, file, "failed to parse %s: %v", file, err)
+	}
+	if !response.Success {
+		// TODO: It's debatable whether this should be a warning or a fatal error. Having a warning
+		// is probably the least surprising, although it could be frustrating to have a bunch of new
+		// gazelle errors if there's a parse error in a library that many things depend on.
+		l.Log(c, logWarn, file, "failed to parse %s: %s", file, response.ErrorMsg)
+		return nil
 	}
 	return response
 }

@@ -22,12 +22,24 @@ enum Args {
 fn handle_rust_imports_request(
     request: RustImportsRequest,
 ) -> Result<RustImportsResponse, Box<dyn Error>> {
-    let rust_imports = parser::parse_imports(PathBuf::from(request.file_path))?;
+    let rust_imports = parser::parse_imports(PathBuf::from(request.file_path));
 
     let mut response = RustImportsResponse::default();
-    response.set_hints(rust_imports.hints);
-    response.imports = RepeatedField::from_vec(rust_imports.imports);
-    response.test_imports = RepeatedField::from_vec(rust_imports.test_imports);
+    match rust_imports {
+        Ok(rust_imports) => {
+            response.set_success(true);
+            response.set_hints(rust_imports.hints);
+            response.imports = RepeatedField::from_vec(rust_imports.imports);
+            response.test_imports = RepeatedField::from_vec(rust_imports.test_imports);
+        }
+        Err(err) => {
+            // Don't crash gazelle if we encounter an error, instead bubble it up so that we can
+            // report it and keep going.
+            // TODO: It's possible that some errors here actually should be fatal.
+            response.set_success(false);
+            response.set_error_msg(err.to_string());
+        }
+    }
 
     Ok(response)
 }
