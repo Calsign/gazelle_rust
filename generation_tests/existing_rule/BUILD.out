@@ -1,0 +1,12 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "foobar",
+    srcs = ["foobar.cc"],
+)
+
+rust_library(
+    name = "foobar_rs",
+    srcs = ["foobar.rs"],
+)

@@ -65,6 +65,25 @@ func getTestCrate(rule *rule.Rule, repo string, pkg string) string {
 	return ""
 }
 
+// If there is already a rule with the requested name, we want to be able to fall back to a fresh
+// name, by adding an "_rs" suffix. It's possible (although unlikely) that a rule with that suffixed
+// name also exists, in which case we fail and return nil.
+func freshRuleName(request string, existingRuleNames map[string]bool) *string {
+	if _, ok := existingRuleNames[request]; ok {
+		// need to pick a new name
+		suffixedName := request + "_rs"
+		if _, ok := existingRuleNames[suffixedName]; ok {
+			// give up
+			return nil
+		} else {
+			return &suffixedName
+		}
+	} else {
+		// we can use the request
+		return &request
+	}
+}
+
 var ruleCloneAttrs = []string{"srcs", "crate"}
 
 // It's nice to be able to re-use existing Rules so that we can resolve them but preserve the
@@ -85,6 +104,7 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 	result := language.GenerateResult{}
 
 	filesInExistingRules := map[string]bool{}
+	existingRuleNames := map[string]bool{}
 
 	var dirname *string
 	if args.Rel == "" {
@@ -123,6 +143,8 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 
 	if args.File != nil {
 		for _, existingRule := range args.File.Rules {
+			existingRuleNames[existingRule.Name()] = true
+
 			rule := CloneRule(existingRule)
 
 			// NOTE: Gazelle expects us to create rules using the un-mapped kinds. Since we are
@@ -153,7 +175,13 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 
 			inferredKind := l.inferRuleKind(file, dirname, response)
 
-			rule := rule.NewRule(inferredKind, strings.TrimSuffix(file, ".rs"))
+			ruleName := freshRuleName(strings.TrimSuffix(file, ".rs"), existingRuleNames)
+			if ruleName == nil {
+				l.Log(args.Config, logWarn, args.File, "could not find a suitable rule name, all candidates already taken")
+				continue
+			}
+
+			rule := rule.NewRule(inferredKind, *ruleName)
 			rule.SetAttr("srcs", []string{file})
 
 			responses := []*pb.RustImportsResponse{response}
@@ -176,7 +204,13 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 			// create a corresponding test crate target
 			var testRule *rule.Rule
 			if existingTestRule == nil {
-				testRule = rule.NewRule("rust_test", ruleData.rule.Name()+"_test")
+				testRuleName := freshRuleName(ruleData.rule.Name()+"_test", existingRuleNames)
+				if testRuleName == nil {
+					l.Log(args.Config, logWarn, args.File, "could not find a suitable test rule name, all candidates already taken")
+					continue
+				}
+
+				testRule = rule.NewRule("rust_test", *testRuleName)
 				testRule.SetAttr("crate", ":"+ruleData.rule.Name())
 			} else {
 				testRule = CloneRule(existingTestRule)
