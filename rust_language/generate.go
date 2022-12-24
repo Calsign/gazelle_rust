@@ -145,14 +145,16 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 		for _, existingRule := range args.File.Rules {
 			existingRuleNames[existingRule.Name()] = true
 
-			rule := CloneRule(existingRule)
+			unmappedKind := l.GetMappedKindInverse(args.Config, existingRule.Kind())
 
-			// NOTE: Gazelle expects us to create rules using the un-mapped kinds. Since we are
-			// re-creating an existing rule, the associated kind is the mapped one, and we need to
-			// reset it. It is probably a bug that Gazelle does not already handle this for us.
-			rule.SetKind(l.GetMappedKindInverse(args.Config, rule.Kind()))
+			if SliceContains(commonDefs, unmappedKind) {
+				rule := CloneRule(existingRule)
 
-			if SliceContains(commonDefs, rule.Kind()) {
+				// NOTE: Gazelle expects us to create rules using the un-mapped kinds. Since we are
+				// re-creating an existing rule, the associated kind is the mapped one, and we need to
+				// reset it. It is probably a bug that Gazelle does not already handle this for us.
+				rule.SetKind(unmappedKind)
+
 				responses := []*pb.RustImportsResponse{}
 
 				for _, file := range rule.AttrStrings("srcs") {
