@@ -48,7 +48,6 @@ http_archive(
     patches = ["//patches:rules_rust.patch"],
     sha256 = versions.RULES_RUST_SHA256,
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_rust/releases/download/{0}/rules_rust-v{0}.tar.gz".format(versions.RULES_RUST_VERSION),
         "https://github.com/bazelbuild/rules_rust/releases/download/{0}/rules_rust-v{0}.tar.gz".format(versions.RULES_RUST_VERSION),
     ],
 )
@@ -59,7 +58,7 @@ rules_rust_dependencies()
 
 rust_register_toolchains(
     edition = "2021",
-    version = versions.RUST_VERSION,
+    versions = [versions.RUST_VERSION],
 )
 
 # gazelle_rust dependencies
