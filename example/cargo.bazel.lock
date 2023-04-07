@@ -1,5 +1,5 @@
 {
-  "checksum": "0ca2e0e80278530106a9a56fb11587b3521301b1e50a4747f10fcad0a97ae7c7",
+  "checksum": "6994e37a6134ebfcc47db09e5551240564abedace50b6962d185708a0aff2ba9",
   "crates": {
     "atty 0.2.14": {
       "name": "atty",

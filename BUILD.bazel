@@ -51,7 +51,7 @@ gazelle(
 )
 
 # NOTE: need to use the version of protobuf from rules_rust so that it matches
-# gazelle:resolve rust protobuf @rules_rust//proto/raze:protobuf
+# gazelle:resolve rust protobuf @rules_rust//proto/3rdparty/crates:protobuf
 
 # NOTE: use cargo_bazel to parse the lockfile
 # gazelle:resolve rust cargo_bazel @rules_rust//crate_universe:cargo_bazel

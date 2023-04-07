@@ -33,7 +33,7 @@ rust_binary(
         ":parser",
         "//3rdparty/crates:clap",
         "//proto:messages_rust_proto",
-        "@rules_rust//proto/raze:protobuf",
+        "@rules_rust//proto/3rdparty/crates:protobuf",
     ],
 )
 

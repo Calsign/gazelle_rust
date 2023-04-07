@@ -1,7 +1,7 @@
 versions = struct(
     # gazelle
-    GAZELLE_VERSION = "0.28.0",
-    GAZELLE_SHA256 = "448e37e0dbf61d6fa8f00aaa12d191745e14f07c31cabfa731f0c8e8a4f41b97",
+    GAZELLE_VERSION = "0.30.0",
+    GAZELLE_SHA256 = "727f3e4edd96ea20c29e8c2ca9e8d2af724d8c7778e7923a854b2c80952bc405",
 
     # rules_go
     RULES_GO_VERSION = "0.37.0",
@@ -11,9 +11,9 @@ versions = struct(
     GO_VERSION = "1.19.4",
 
     # rules_rust
-    RULES_RUST_VERSION = "0.16.1",
-    RULES_RUST_SHA256 = "aaaa4b9591a5dad8d8907ae2dbe6e0eb49e6314946ce4c7149241648e56a1277",
+    RULES_RUST_VERSION = "0.20.0",
+    RULES_RUST_SHA256 = "950a3ad4166ae60c8ccd628d1a8e64396106e7f98361ebe91b0bcfe60d8e4b60",
 
     # rust
-    RUST_VERSION = "1.66.0",
+    RUST_VERSION = "1.68.2",
 )

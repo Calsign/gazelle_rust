@@ -1,8 +1,8 @@
-diff --git cmd/gazelle/fix-update.go cmd/gazelle/fix-update.go
-index 47d00b3..7285cda 100644
+diff --git a/cmd/gazelle/fix-update.go b/cmd/gazelle/fix-update.go
+index 52e25b5..7821a19 100644
 --- cmd/gazelle/fix-update.go
 +++ cmd/gazelle/fix-update.go
-@@ -387,6 +387,12 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
+@@ -425,6 +425,12 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
  			unionKindInfoMaps(kinds, v.mappedKindInfo))
  	}
  
@@ -15,18 +15,18 @@ index 47d00b3..7285cda 100644
  	// Emit merged files.
  	var exit error
  	for _, v := range visits {
-diff --git language/lang.go language/lang.go
-index 4f3d7e1..2befb21 100644
+diff --git a/language/lang.go b/language/lang.go
+index c835f74..aca40e8 100644
 --- language/lang.go
 +++ language/lang.go
-@@ -108,6 +108,10 @@ type FinishableLanguage interface {
- 	DoneGeneratingRules()
+@@ -98,6 +98,10 @@ type Language interface {
+ 	Fix(c *config.Config, f *rule.File)
  }
  
 +type ResolveFinishableLanguage interface {
 +	DoneResolving(c *config.Config)
 +}
 +
- // GenerateArgs contains arguments for language.GenerateRules. Arguments are
- // passed in a struct value so that new fields may be added in the future
- // without breaking existing implementations.
+ // FinishableLanguage allows a Language to be notified when Generate is finished
+ // being called.
+ type FinishableLanguage interface {
