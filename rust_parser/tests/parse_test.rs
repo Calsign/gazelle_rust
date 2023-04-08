@@ -14,6 +14,7 @@ lazy_static::lazy_static! {
         TestCase {
             filename: "simple.rs",
             expected_imports: vec![
+                "gazelle",
                 "test_extern_crate_1",
                 "test_use_1",
                 "test_use_2",

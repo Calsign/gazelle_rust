@@ -1,0 +1,7 @@
+load("@rules_rust//rust:defs.bzl", "rust_proc_macro")
+
+rust_proc_macro(
+    name = "gazelle",
+    srcs = ["lib.rs"],
+    visibility = ["//visibility:public"],
+)

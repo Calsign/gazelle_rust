@@ -174,7 +174,7 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 			l.Log(c, logErr, from, "multiple matches found for %s: [%s]\n", spec.Imp, strings.Join(candidateLabels, ", "))
 			return nil, true
 		}
-	} else if override, ok := Provided[spec.Imp]; ok {
+	} else if override, ok := Provided[lang][spec.Imp]; ok {
 		return &override, true
 	} else {
 		return nil, false

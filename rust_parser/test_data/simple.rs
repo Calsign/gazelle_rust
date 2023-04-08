@@ -6,6 +6,10 @@ use test_use_3::*;
 use test_use_4 as outer_alias;
 use test_use_5::self_use::{self, x};
 
+#[gazelle::ignore]
+use ignored_dep::ignored_mod;
+use ignored_mod::foobar;
+
 use x::X;
 
 use test_duplicate;
@@ -30,6 +34,9 @@ fn main() {
     self_use::something();
 
     use crate::foobar;
+
+    #[gazelle::ignore]
+    use another_ignored_dep;
 }
 
 use test_inner_mod_3;

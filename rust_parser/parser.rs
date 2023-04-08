@@ -113,6 +113,10 @@ struct Scope<'ast> {
     mods: Vec<Ident<'ast>>,
     /// whether this scope is behind #[test] or #[cfg(test)]
     is_test_only: bool,
+    /// whether this scope is behind #[gazelle::ignore]
+    // TODO: this is not currently used, but we could support #[gazelle::ignore] on things like
+    // functions and blocks in the future
+    is_ignored: bool,
 }
 
 #[derive(Debug)]
@@ -143,6 +147,48 @@ impl<'ast> Default for AstVisitor<'ast> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Directive {
+    Ignore,
+}
+
+impl Directive {
+    fn parse(meta: syn::Meta) -> Self {
+        let path = meta.path();
+        // TODO: proper error handling
+        assert_eq!(
+            path.segments.len(),
+            2,
+            "invalid gazelle directive: {:?}",
+            path
+        );
+        assert_eq!(path.segments[0].ident, "gazelle");
+        let ident = &path.segments[1].ident;
+
+        // can't use match because we can't construct Idents to match against
+        if ident == "ignore" {
+            Self::Ignore
+        } else {
+            panic!("unexpected gazelle directive: {}", ident);
+        }
+    }
+}
+
+#[derive(Default)]
+struct DirectiveSet {
+    directives: HashSet<Directive>,
+}
+
+impl DirectiveSet {
+    fn insert(&mut self, directive: Directive) {
+        self.directives.insert(directive);
+    }
+
+    fn should_ignore(&self) -> bool {
+        self.directives.contains(&Directive::Ignore)
+    }
+}
+
 impl<'ast> AstVisitor<'ast> {
     fn add_import<I: Into<Ident<'ast>>>(&mut self, ident: I) {
         let ident = ident.into();
@@ -152,7 +198,7 @@ impl<'ast> AstVisitor<'ast> {
             return;
         }
 
-        if !self.scope_mods.contains(&ident) {
+        if !self.scope_mods.contains(&ident) && !self.is_ignored_scope() {
             if self.is_test_only_scope() {
                 self.test_imports.insert(ident);
             } else {
@@ -170,13 +216,14 @@ impl<'ast> AstVisitor<'ast> {
         }
     }
 
-    fn push_scope(&mut self, test: bool) {
+    fn push_scope(&mut self, test: bool, ignored: bool) {
         // TODO: create stack entry lazily so that we avoid it if there are no renames in this scope
-        let current_test_only = self.mod_stack.back().unwrap().is_test_only;
+        let current_scope = self.mod_stack.back().unwrap();
         self.mod_stack.push_back(Scope {
             mods: Vec::new(),
             // scopes within test-only scopes are also test-only
-            is_test_only: test || current_test_only,
+            is_test_only: test || current_scope.is_test_only,
+            is_ignored: ignored || current_scope.is_ignored,
         });
     }
 
@@ -192,6 +239,10 @@ impl<'ast> AstVisitor<'ast> {
 
     fn is_test_only_scope(&self) -> bool {
         self.mod_stack.back().unwrap().is_test_only
+    }
+
+    fn is_ignored_scope(&self) -> bool {
+        self.mod_stack.back().unwrap().is_ignored
     }
 
     fn visit_type_attrs(&mut self, attrs: &'ast Vec<syn::Attribute>) {
@@ -220,6 +271,24 @@ impl<'ast> AstVisitor<'ast> {
             }
         }
     }
+
+    fn parse_directives(&self, attrs: &'ast Vec<syn::Attribute>) -> DirectiveSet {
+        let mut directives = DirectiveSet::default();
+        for attr in attrs {
+            if let Ok(meta) = attr.parse_meta() {
+                if meta
+                    .path()
+                    .segments
+                    .first()
+                    .map(|seg| seg.ident == "gazelle")
+                    .unwrap_or(false)
+                {
+                    directives.insert(Directive::parse(meta));
+                }
+            }
+        }
+        directives
+    }
 }
 
 impl<'ast> Visit<'ast> for AstVisitor<'ast> {
@@ -240,12 +309,20 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     }
 
     fn visit_item_use(&mut self, node: &'ast syn::ItemUse) {
-        // the first path segment is an import
-        match &node.tree {
-            syn::UseTree::Path(path) => self.add_import(&path.ident),
-            syn::UseTree::Name(name) => self.add_import(&name.ident),
-            _ => (),
+        let directives = self.parse_directives(&node.attrs);
+
+        // NOTE: We want to ignore any dependencies inside the ignored scope. However, we still want
+        // to bring anything imported into scope, hence the visit::visit_item_use outside the
+        // conditional below.
+        if !directives.should_ignore() {
+            // the first path segment is an import
+            match &node.tree {
+                syn::UseTree::Path(path) => self.add_import(&path.ident),
+                syn::UseTree::Name(name) => self.add_import(&name.ident),
+                _ => (),
+            }
         }
+
         visit::visit_item_use(self, node);
     }
 
@@ -265,11 +342,14 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     }
 
     fn visit_item_extern_crate(&mut self, node: &'ast syn::ItemExternCrate) {
-        self.add_import(&node.ident);
+        let directives = self.parse_directives(&node.attrs);
+        if !directives.should_ignore() {
+            self.add_import(&node.ident);
+        }
     }
 
     fn visit_block(&mut self, node: &'ast syn::Block) {
-        self.push_scope(false);
+        self.push_scope(false, false);
         visit::visit_block(self, node);
         self.pop_scope();
     }
@@ -295,7 +375,7 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         }
 
         self.add_mod(&node.ident);
-        self.push_scope(is_test_only);
+        self.push_scope(is_test_only, false);
         visit::visit_item_mod(self, node);
         self.pop_scope();
     }
@@ -321,7 +401,7 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
             }
         }
 
-        self.push_scope(is_test_only);
+        self.push_scope(is_test_only, false);
         visit::visit_item_fn(self, node);
         self.pop_scope();
     }

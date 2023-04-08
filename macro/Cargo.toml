@@ -1,0 +1,11 @@
+[package]
+name = "gazelle"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "gazelle"
+path = "src/lib.rs"
+proc-macro = true
+
+[dependencies]

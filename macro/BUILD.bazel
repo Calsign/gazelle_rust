@@ -1,0 +1,6 @@
+# NOTE: `gazelle` is resolved to here in builtins.go
+alias(
+    name = "macro",
+    actual = "//macro/src:gazelle",
+    visibility = ["//visibility:public"],
+)

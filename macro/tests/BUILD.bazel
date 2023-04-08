@@ -1,0 +1,7 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "ignore_test",
+    srcs = ["ignore_test.rs"],
+    proc_macro_deps = ["//macro/src:gazelle"],
+)
