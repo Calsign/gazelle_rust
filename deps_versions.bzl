@@ -11,9 +11,9 @@ versions = struct(
     GO_VERSION = "1.21.0",
 
     # rules_rust
-    RULES_RUST_VERSION = "0.20.0",
-    RULES_RUST_SHA256 = "950a3ad4166ae60c8ccd628d1a8e64396106e7f98361ebe91b0bcfe60d8e4b60",
+    RULES_RUST_VERSION = "0.26.0",
+    RULES_RUST_SHA256 = "9d04e658878d23f4b00163a72da3db03ddb451273eb347df7d7c50838d698f49",
 
     # rust
-    RUST_VERSION = "1.68.2",
+    RUST_VERSION = "1.71.0",
 )

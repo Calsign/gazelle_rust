@@ -4,7 +4,7 @@ load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 # protobuf
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
-load("@rules_rust//proto:repositories.bzl", "rust_proto_repositories")
+load("@rules_rust//proto/protobuf:repositories.bzl", "rust_proto_protobuf_dependencies", "rust_proto_protobuf_register_toolchains")
 
 # versions of dependencies
 load(":deps_versions.bzl", "versions")
@@ -22,4 +22,5 @@ def gazelle_rust_dependencies2():
     rules_proto_dependencies()
     rules_proto_toolchains()
 
-    rust_proto_repositories()
+    rust_proto_protobuf_dependencies()
+    rust_proto_protobuf_register_toolchains()
