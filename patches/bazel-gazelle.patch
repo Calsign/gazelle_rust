@@ -1,9 +1,9 @@
 diff --git a/cmd/gazelle/fix-update.go b/cmd/gazelle/fix-update.go
-index 52e25b5..7821a19 100644
+index d99141f..4a3e637 100644
 --- cmd/gazelle/fix-update.go
 +++ cmd/gazelle/fix-update.go
-@@ -425,6 +425,12 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
- 			unionKindInfoMaps(kinds, v.mappedKindInfo))
+@@ -451,6 +451,12 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
+ 		}
  	}
  
 +	for _, lang := range languages {
