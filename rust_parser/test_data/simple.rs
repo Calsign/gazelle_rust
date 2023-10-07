@@ -51,6 +51,8 @@ mod foobar {
     mod test_inner_mod_2 {}
 
     mod test_inner_mod_3 {}
+
+    use super::foobar;
 }
 
 use foobar;

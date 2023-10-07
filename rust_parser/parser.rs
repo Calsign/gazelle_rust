@@ -193,8 +193,8 @@ impl<'ast> AstVisitor<'ast> {
     fn add_import<I: Into<Ident<'ast>>>(&mut self, ident: I) {
         let ident = ident.into();
 
-        if ident == "crate" {
-            // "crate" is a keyword referring to the current crate; not an import
+        if ident == "crate" || ident == "super" {
+            // these are keywords referring to the current crate; not an import
             return;
         }
 
