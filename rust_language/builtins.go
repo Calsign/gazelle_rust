@@ -7,11 +7,17 @@ import (
 // modules provided by rust
 var Builtins = map[string]bool{
 	// standard library
-	"std":  true,
-	"core": true,
+	"std":   true,
+	"core":  true,
+	"alloc": true,
+	"test":  true,
 
 	// proc macros
 	"proc_macro": true,
+
+	// tools
+	"rustfmt": true,
+	"clippy":  true,
 
 	// primitive types
 	// https://doc.rust-lang.org/std/primitive/index.html

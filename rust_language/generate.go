@@ -286,7 +286,12 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 						}
 					}
 
-					l.generateCargoRule(args.Config, &args, response.Library, "rust_library", suffix, []string{}, &result)
+					kind := "rust_library"
+					if response.Library.ProcMacro {
+						kind = "rust_proc_macro"
+					}
+
+					l.generateCargoRule(args.Config, &args, response.Library, kind, suffix, []string{}, &result)
 				}
 				for _, binary := range response.Binaries {
 					l.generateCargoRule(args.Config, &args, binary, "rust_binary", "", []string{}, &result)
@@ -329,6 +334,7 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 
 				testRule := rule.NewRule("rust_test", *testRuleName)
 				testRule.SetAttr("crate", ":"+ruleData.rule.Name())
+				testRule.SetAttr("compile_data", []string{":Cargo.toml"})
 
 				result.Gen = append(result.Gen, testRule)
 				result.Imports = append(result.Imports, RuleData{
@@ -380,6 +386,7 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 	newRule := rule.NewRule(kind, targetName)
 	newRule.SetAttr("srcs", srcs)
 	newRule.SetAttr("visibility", []string{"//visibility:public"})
+	newRule.SetAttr("compile_data", []string{":Cargo.toml"})
 
 	if targetName != crateName {
 		newRule.SetAttr("crate_name", crateName)

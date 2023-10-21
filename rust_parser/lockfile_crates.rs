@@ -57,9 +57,27 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
             add_crate(&dep.id, false);
         }
 
+        for dep in workspace_crate
+            .common_attrs
+            .deps_dev
+            .get_iter(None)
+            .unwrap()
+        {
+            add_crate(&dep.id, false);
+        }
+
         for proc_macro_dep in workspace_crate
             .common_attrs
             .proc_macro_deps
+            .get_iter(None)
+            .unwrap()
+        {
+            add_crate(&proc_macro_dep.id, true);
+        }
+
+        for proc_macro_dep in workspace_crate
+            .common_attrs
+            .proc_macro_deps_dev
             .get_iter(None)
             .unwrap()
         {

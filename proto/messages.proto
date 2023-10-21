@@ -58,6 +58,7 @@ message CargoTomlRequest {
 message CargoCrateInfo {
     string name = 1;
     repeated string srcs = 2;
+    bool proc_macro = 3;
 }
 
 message CargoTomlResponse {

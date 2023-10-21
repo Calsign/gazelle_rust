@@ -198,7 +198,7 @@ impl<'ast> AstVisitor<'ast> {
     fn add_import<I: Into<Ident<'ast>>>(&mut self, ident: I) {
         let ident = ident.into();
 
-        if ident == "crate" || ident == "super" {
+        if ident == "crate" || ident == "super" || ident == "self" {
             // these are keywords referring to the current crate; not an import
             return;
         }
@@ -403,7 +403,7 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
                         if ident == "test" {
                             self.hints.has_test = true;
                             is_test_only = true;
-                        } else if ident == "proc_macro" {
+                        } else if ident == "proc_macro" || ident == "proc_macro_attribute" {
                             self.hints.has_proc_macro = true;
                         }
                     }
