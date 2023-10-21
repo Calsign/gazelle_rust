@@ -1,0 +1,11 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "pure_bazel_b",
+    srcs = ["pure_bazel_b.rs"],
+    deps = [
+        "//cargo_a",
+        "//cargo_b",
+        "//pure_bazel_a",
+    ],
+)

@@ -15,6 +15,7 @@ pub struct RustImports {
     pub hints: Hints,
     pub imports: Vec<String>,
     pub test_imports: Vec<String>,
+    pub extern_mods: Vec<String>,
 }
 
 pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
@@ -47,6 +48,7 @@ pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
         hints: visitor.hints,
         imports: filter_imports(visitor.imports),
         test_imports: filter_imports(test_imports),
+        extern_mods: visitor.extern_mods,
     })
 }
 
@@ -131,6 +133,8 @@ struct AstVisitor<'ast> {
     scope_mods: HashSet<Ident<'ast>>,
     /// collected hints
     hints: Hints,
+    /// bare mods defined in external files
+    extern_mods: Vec<String>,
 }
 
 impl<'ast> Default for AstVisitor<'ast> {
@@ -143,6 +147,7 @@ impl<'ast> Default for AstVisitor<'ast> {
             mod_stack,
             scope_mods: HashSet::default(),
             hints: Hints::default(),
+            extern_mods: Vec::default(),
         }
     }
 }
@@ -372,6 +377,11 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
                     }
                 }
             }
+        }
+
+        if self.is_root_scope() && node.content.is_none() {
+            // this mod is defined in a different file
+            self.extern_mods.push(node.ident.to_string());
         }
 
         self.add_mod(&node.ident);

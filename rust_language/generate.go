@@ -1,7 +1,10 @@
 package rust_language
 
 import (
+	"log"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -101,6 +104,19 @@ func CloneRule(oldRule *rule.Rule) *rule.Rule {
 }
 
 func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
+	cfg := l.GetConfig(args.Config)
+	switch cfg.Mode {
+	case modePureBazel:
+		return l.generateRulesPureBazel(args)
+	case modeGenerateFromCargo:
+		return l.generateRulesFromCargo(args)
+	default:
+		log.Panicf("unrecognized mode")
+		return language.GenerateResult{}
+	}
+}
+
+func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.GenerateResult {
 	result := language.GenerateResult{}
 
 	filesInExistingRules := map[string]bool{}
@@ -161,7 +177,7 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 					filesInExistingRules[file] = true
 
 					if strings.HasSuffix(file, ".rs") {
-						response := l.parseFile(args.Config, file, args)
+						response := l.parseFile(args.Config, file, &args)
 						if response != nil {
 							responses = append(responses, response)
 						}
@@ -175,7 +191,7 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 
 	for _, file := range args.RegularFiles {
 		if !filesInExistingRules[file] && strings.HasSuffix(file, ".rs") {
-			response := l.parseFile(args.Config, file, args)
+			response := l.parseFile(args.Config, file, &args)
 			if response == nil {
 				continue
 			}
@@ -237,7 +253,7 @@ func (l *rustLang) GenerateRules(args language.GenerateArgs) language.GenerateRe
 	return result
 }
 
-func (l *rustLang) parseFile(c *config.Config, file string, args language.GenerateArgs) *pb.RustImportsResponse {
+func (l *rustLang) parseFile(c *config.Config, file string, args *language.GenerateArgs) *pb.RustImportsResponse {
 	request := &pb.RustImportsRequest{FilePath: path.Join(args.Dir, file)}
 	response, err := l.Parser.Parse(request)
 	if err != nil {
@@ -251,4 +267,199 @@ func (l *rustLang) parseFile(c *config.Config, file string, args language.Genera
 		return nil
 	}
 	return response
+}
+
+func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.GenerateResult {
+	result := language.GenerateResult{}
+
+	for _, file := range args.RegularFiles {
+		if file == "Cargo.toml" {
+			if response := l.parseCargoToml(args.Config, file, &args); response != nil {
+				if response.Library != nil {
+					// if there is a main.rs next to lib.rs, they will both have the same crate
+					// name; need to give the library a different name
+					suffix := ""
+					for _, binary := range response.Binaries {
+						if binary.Name == response.Library.Name {
+							suffix = "_lib"
+							break
+						}
+					}
+
+					l.generateCargoRule(args.Config, &args, response.Library, "rust_library", suffix, []string{}, &result)
+				}
+				for _, binary := range response.Binaries {
+					l.generateCargoRule(args.Config, &args, binary, "rust_binary", "", []string{}, &result)
+				}
+				for _, test := range response.Tests {
+					l.generateCargoRule(args.Config, &args, test, "rust_test", "", []string{}, &result)
+				}
+				for _, bench := range response.Benches {
+					l.generateCargoRule(args.Config, &args, bench, "rust_binary", "", []string{"bench"}, &result)
+				}
+				for _, example := range response.Examples {
+					l.generateCargoRule(args.Config, &args, example, "rust_binary", "", []string{"example"}, &result)
+				}
+			}
+		}
+	}
+
+	existingRuleNames := make(map[string]bool)
+	for _, imp := range result.Imports {
+		ruleData := imp.(RuleData)
+		existingRuleNames[ruleData.rule.Name()] = true
+	}
+
+	for _, imp := range result.Imports {
+		ruleData := imp.(RuleData)
+		if ruleData.rule.Kind() != "rust_test" {
+			hasTest := false
+			for _, response := range ruleData.responses {
+				if response.Hints.HasTest {
+					hasTest = true
+				}
+			}
+
+			if hasTest {
+				testRuleName := freshRuleName(ruleData.rule.Name()+"_test", existingRuleNames)
+				if testRuleName == nil {
+					l.Log(args.Config, logWarn, args.File, "could not find a suitable test rule name, all candidates already taken")
+					continue
+				}
+
+				testRule := rule.NewRule("rust_test", *testRuleName)
+				testRule.SetAttr("crate", ":"+ruleData.rule.Name())
+
+				result.Gen = append(result.Gen, testRule)
+				result.Imports = append(result.Imports, RuleData{
+					rule:        testRule,
+					responses:   ruleData.responses,
+					testedCrate: ruleData.rule,
+				})
+			}
+		}
+	}
+
+	return result
+}
+
+func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateArgs,
+	crateInfo *pb.CargoCrateInfo, kind string, suffix string, tags []string,
+	result *language.GenerateResult) {
+
+	targetName := crateInfo.Name + suffix
+	crateName := crateInfo.Name
+
+	var crateRoot *string = nil
+	if len(crateInfo.Srcs) == 1 {
+		onlySrc := crateInfo.Srcs[0]
+		onlySrcFilename := filepath.Base(onlySrc)
+		// handle cases where we need to specify the crate root manually
+		if !(kind == "rust_library" && onlySrcFilename == "lib.rs") &&
+			!((kind == "rust_binary" || kind == "rust_test") && onlySrcFilename == "main.rs") {
+			crateRoot = &onlySrc
+		}
+	}
+
+	// traverse all files we know about to determine the full module structure
+	importsResponses := map[string]*pb.RustImportsResponse{}
+	for _, src := range crateInfo.Srcs {
+		l.discoverModule(c, src, args, &importsResponses, true)
+	}
+
+	srcs := []string{}
+	responses := []*pb.RustImportsResponse{}
+
+	for src, response := range importsResponses {
+		srcs = append(srcs, src)
+		if response != nil {
+			responses = append(responses, response)
+		}
+	}
+
+	newRule := rule.NewRule(kind, targetName)
+	newRule.SetAttr("srcs", srcs)
+	newRule.SetAttr("visibility", []string{"//visibility:public"})
+
+	if targetName != crateName {
+		newRule.SetAttr("crate_name", crateName)
+	}
+
+	if len(tags) != 0 {
+		newRule.SetAttr("tags", tags)
+	}
+
+	if crateRoot != nil && len(srcs) > 1 {
+		newRule.SetAttr("crate_root", *crateRoot)
+	}
+
+	result.Gen = append(result.Gen, newRule)
+	result.Imports = append(result.Imports, RuleData{
+		rule:        newRule,
+		responses:   responses,
+		testedCrate: nil,
+	})
+}
+
+func (l *rustLang) discoverModule(c *config.Config, file string, args *language.GenerateArgs,
+	importsResponses *map[string]*pb.RustImportsResponse, isModRoot bool) {
+
+	if _, ok := (*importsResponses)[file]; ok {
+		return
+	}
+
+	response := l.parseFile(c, file, args)
+	(*importsResponses)[file] = response
+
+	if response != nil {
+		dirname := filepath.Dir(file)
+		currentModName := strings.TrimSuffix(filepath.Base(file), ".rs")
+
+		for _, externMod := range response.ExternMods {
+			var externModPath string
+			var childIsModRoot bool
+
+			if isModRoot {
+				// first check for an adjacent file
+				externModPath = filepath.Join(dirname, externMod+".rs")
+				childIsModRoot = false
+
+				// then check for an equivalent mod.rs
+				if !fileExists(externModPath, args) {
+					externModPath = filepath.Join(dirname, externMod, "mod.rs")
+					childIsModRoot = true
+				}
+			} else {
+				// look in the subdirectory for the current module
+				externModPath = filepath.Join(dirname, currentModName, externMod+".rs")
+				childIsModRoot = false
+			}
+
+			if !fileExists(externModPath, args) {
+				l.Log(c, logWarn, file, "could not find file for mod %s", externMod)
+				continue
+			}
+
+			l.discoverModule(c, externModPath, args, importsResponses, childIsModRoot)
+		}
+	}
+}
+
+func (l *rustLang) parseCargoToml(c *config.Config, file string, args *language.GenerateArgs) *pb.CargoTomlResponse {
+	request := &pb.CargoTomlRequest{FilePath: path.Join(args.Dir, file)}
+	response, err := l.Parser.ParseCargoToml(request)
+	if err != nil {
+		l.Log(c, logFatal, file, "failed to parse Cargo.toml: %v", err)
+	}
+	if !response.Success {
+		l.Log(c, logWarn, file, "failed to parse Cargo.toml: %s", response.ErrorMsg)
+		return nil
+	}
+	return response
+}
+
+func fileExists(path string, args *language.GenerateArgs) bool {
+	fullPath := filepath.Join(args.Dir, path)
+	_, err := os.Stat(fullPath)
+	return err == nil
 }

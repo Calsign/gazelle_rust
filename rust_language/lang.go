@@ -18,6 +18,15 @@ var (
 
 // Available directives
 var (
+	// Mode to operate in. Currently supported modes:
+	//  - pure_bazel (default): read sources to generate build files
+	//  - generate_from_cargo: read Cargo.toml files for crate structure; read sources for
+	//    dependencies
+	modeDirective string = "rust_mode"
+
+	modePureBazel         string = "pure_bazel"
+	modeGenerateFromCargo string = "generate_from_cargo"
+
 	// Path to Cargo.Bazel.lock.
 	// Use either rust_lockfile or rust_cargo_lockfile, not both.
 	// Must also specify rust_crates_prefix.
@@ -38,10 +47,27 @@ var (
 )
 
 type rustConfig struct {
+	Mode               string
 	LockfileCrates     *LockfileCrates
 	CratesPrefix       string
 	ProcMacroOverrides map[string]bool
 	KindMapInverse     map[string]string
+}
+
+func (cfg *rustConfig) Clone() *rustConfig {
+	copy := *cfg
+	// TODO(will): intentionally don't clone LockfileCrates because we want it to persist across
+	// directories, but this breaks the ability to have multiple different sets of crates in one
+	// repo
+	copy.ProcMacroOverrides = make(map[string]bool)
+	for k, v := range cfg.ProcMacroOverrides {
+		copy.ProcMacroOverrides[k] = v
+	}
+	copy.KindMapInverse = make(map[string]string)
+	for k, v := range cfg.KindMapInverse {
+		copy.KindMapInverse[k] = v
+	}
+	return &copy
 }
 
 type scopedCrateSet struct {
@@ -114,24 +140,30 @@ func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 }
 
 func (*rustLang) KnownDirectives() []string {
-	return []string{lockfileDirective, cargoLockfileDirective, cratesPrefixDirective,
-		procMacroOverrideDirective, allowUnusedCrateDirective}
+	return []string{modeDirective, lockfileDirective, cargoLockfileDirective,
+		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
+	// it should have been set by Configure
+	return c.Exts[l.Name()].(*rustConfig)
+}
+
+func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
+	var cfg *rustConfig
 	if _, ok := c.Exts[l.Name()]; !ok {
-		c.Exts[l.Name()] = &rustConfig{
+		cfg = &rustConfig{
+			Mode:               modePureBazel,
 			LockfileCrates:     EmptyLockfileCrates(),
 			CratesPrefix:       "",
 			ProcMacroOverrides: make(map[string]bool),
 			KindMapInverse:     make(map[string]string),
 		}
+	} else {
+		// NOTE(will): important to clone so that we don't leak state across directories
+		cfg = c.Exts[l.Name()].(*rustConfig).Clone()
 	}
-	return c.Exts[l.Name()].(*rustConfig)
-}
-
-func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
-	cfg := l.GetConfig(c)
+	c.Exts[l.Name()] = cfg
 
 	addCrateSet := func(directive rule.Directive, cargo bool) {
 		// Storing the crate set in the configuration allows for multiple instances of
@@ -158,7 +190,13 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 
 	if f != nil {
 		for _, directive := range f.Directives {
-			if directive.Key == lockfileDirective {
+			if directive.Key == modeDirective {
+				if directive.Value != modePureBazel && directive.Value != modeGenerateFromCargo {
+					l.Log(c, logFatal, f, "bad %s: %s, valid options are %v", modeDirective,
+						directive.Value, []string{modePureBazel, modeGenerateFromCargo})
+				}
+				cfg.Mode = directive.Value
+			} else if directive.Key == lockfileDirective {
 				addCrateSet(directive, false)
 			} else if directive.Key == cargoLockfileDirective {
 				addCrateSet(directive, true)

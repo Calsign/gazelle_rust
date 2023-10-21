@@ -1,0 +1,86 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+
+# gazelle:rust_mode generate_from_cargo
+
+rust_library(
+    name = "all_kinds_lib",
+    srcs = ["src/lib.rs"],
+    crate_name = "all_kinds",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "all_kinds",
+    srcs = ["src/main.rs"],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "another_executable",
+    srcs = ["src/bin/another_executable.rs"],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "multi_file_executable",
+    srcs = [
+        "src/bin/multi_file_executable/main.rs",
+        "src/bin/multi_file_executable/some_module.rs",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "named_executable",
+    srcs = ["src/bin/named_executable.rs"],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "multi_file_test",
+    srcs = [
+        "tests/multi_file_test/main.rs",
+        "tests/multi_file_test/test_module.rs",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "some_integration_test",
+    srcs = ["tests/some_integration_test.rs"],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "large_input",
+    srcs = ["benches/large_input.rs"],
+    tags = ["bench"],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "multi_file_bench",
+    srcs = [
+        "benches/multi_file_bench/bench_module.rs",
+        "benches/multi_file_bench/main.rs",
+    ],
+    tags = ["bench"],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "multi_file_example",
+    srcs = [
+        "examples/multi_file_example/ex_module.rs",
+        "examples/multi_file_example/main.rs",
+    ],
+    tags = ["example"],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "simple",
+    srcs = ["examples/simple.rs"],
+    tags = ["example"],
+    visibility = ["//visibility:public"],
+)

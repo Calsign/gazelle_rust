@@ -1,0 +1,21 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+# gazelle:rust_mode generate_from_cargo
+
+rust_library(
+    name = "nested_modules",
+    srcs = [
+        "src/a.rs",
+        "src/b.rs",
+        "src/b/b1.rs",
+        "src/b/b2.rs",
+        "src/c/c1.rs",
+        "src/c/c2.rs",
+        "src/c/c2/c2a.rs",
+        "src/c/c3/c3a.rs",
+        "src/c/c3/mod.rs",
+        "src/c/mod.rs",
+        "src/lib.rs",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -9,8 +9,9 @@ use clap::Parser;
 use protobuf::{CodedInputStream, CodedOutputStream, RepeatedField};
 
 use messages_rust_proto::{
-    LockfileCratesRequest, LockfileCratesRequest_oneof_lockfile, LockfileCratesResponse, Request,
-    Request_oneof_kind, RustImportsRequest, RustImportsResponse,
+    CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, LockfileCratesRequest,
+    LockfileCratesRequest_oneof_lockfile, LockfileCratesResponse, Request, Request_oneof_kind,
+    RustImportsRequest, RustImportsResponse,
 };
 
 #[derive(clap::Parser)]
@@ -31,6 +32,7 @@ fn handle_rust_imports_request(
             response.set_hints(rust_imports.hints);
             response.imports = RepeatedField::from_vec(rust_imports.imports);
             response.test_imports = RepeatedField::from_vec(rust_imports.test_imports);
+            response.extern_mods = RepeatedField::from_vec(rust_imports.extern_mods);
         }
         Err(err) => {
             // Don't crash gazelle if we encounter an error, instead bubble it up so that we can
@@ -58,6 +60,47 @@ fn handle_lockfile_crates_request(
 
     let mut response = LockfileCratesResponse::default();
     response.set_crates(RepeatedField::from_vec(crates));
+
+    Ok(response)
+}
+
+fn build_crate_info(product: cargo_toml::Product) -> CargoCrateInfo {
+    let mut crate_info = CargoCrateInfo::default();
+
+    if let Some(name) = product.name {
+        crate_info.set_name(name);
+    }
+    if let Some(path) = product.path {
+        crate_info.set_srcs(RepeatedField::from_vec(vec![path]));
+    }
+
+    crate_info
+}
+
+fn handle_cargo_toml_request(
+    request: CargoTomlRequest,
+) -> Result<CargoTomlResponse, Box<dyn Error>> {
+    let mut manifest = cargo_toml::Manifest::from_path(&request.file_path)?;
+    manifest.complete_from_path(&PathBuf::from(&request.file_path))?;
+
+    let mut response = CargoTomlResponse::default();
+    response.set_success(true);
+
+    if let Some(lib) = manifest.lib {
+        response.set_library(build_crate_info(lib));
+    }
+    response.set_binaries(RepeatedField::from_vec(
+        manifest.bin.into_iter().map(build_crate_info).collect(),
+    ));
+    response.set_tests(RepeatedField::from_vec(
+        manifest.test.into_iter().map(build_crate_info).collect(),
+    ));
+    response.set_benches(RepeatedField::from_vec(
+        manifest.bench.into_iter().map(build_crate_info).collect(),
+    ));
+    response.set_examples(RepeatedField::from_vec(
+        manifest.example.into_iter().map(build_crate_info).collect(),
+    ));
 
     Ok(response)
 }
@@ -109,6 +152,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         }
                         Request_oneof_kind::lockfile_crates(request) => {
                             Box::new(handle_lockfile_crates_request(request)?)
+                        }
+                        Request_oneof_kind::cargo_toml(request) => {
+                            Box::new(handle_cargo_toml_request(request)?)
                         }
                     };
 

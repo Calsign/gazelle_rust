@@ -1,0 +1,9 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+# gazelle:rust_mode generate_from_cargo
+
+rust_library(
+    name = "cargo_a",
+    srcs = ["src/lib.rs"],
+    visibility = ["//visibility:public"],
+)

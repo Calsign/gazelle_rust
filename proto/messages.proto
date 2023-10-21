@@ -4,6 +4,7 @@ message Request {
     oneof kind {
         RustImportsRequest rust_imports = 1;
         LockfileCratesRequest lockfile_crates = 2;
+        CargoTomlRequest cargo_toml = 3;
     }
 }
 
@@ -28,8 +29,9 @@ message RustImportsResponse {
     Hints hints = 1;
     repeated string imports = 2;
     repeated string test_imports = 3;
-    bool success = 4;
-    string error_msg = 5;
+    repeated string extern_mods = 4;
+    bool success = 5;
+    string error_msg = 6;
 }
 
 message LockfileCratesRequest {
@@ -47,4 +49,23 @@ message Package {
 
 message LockfileCratesResponse {
     repeated Package crates = 1;
+}
+
+message CargoTomlRequest {
+    string file_path = 1;
+}
+
+message CargoCrateInfo {
+    string name = 1;
+    repeated string srcs = 2;
+}
+
+message CargoTomlResponse {
+    CargoCrateInfo library = 1;
+    repeated CargoCrateInfo binaries = 2;
+    repeated CargoCrateInfo tests = 3;
+    repeated CargoCrateInfo benches = 4;
+    repeated CargoCrateInfo examples = 5;
+    bool success = 6;
+    string error_msg = 7;
 }

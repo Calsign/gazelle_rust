@@ -7,6 +7,7 @@ struct TestCase {
     filename: &'static str,
     expected_imports: Vec<&'static str>,
     expected_test_imports: Vec<&'static str>,
+    expected_extern_mods: Vec<&'static str>,
 }
 
 lazy_static::lazy_static! {
@@ -32,6 +33,7 @@ lazy_static::lazy_static! {
                 "test_attribute_1",
             ],
             expected_test_imports: vec![],
+            expected_extern_mods: vec!["extern_mod"],
         },
         TestCase {
             filename: "test_only.rs",
@@ -48,6 +50,7 @@ lazy_static::lazy_static! {
                 "e",
                 "f",
             ],
+            expected_extern_mods: vec![],
         },
     ];
 }
@@ -106,6 +109,14 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
             &rust_imports.test_imports,
             &test_case
                 .expected_test_imports
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>(),
+        );
+        assert_eq_vecs(
+            &rust_imports.extern_mods,
+            &test_case
+                .expected_extern_mods
                 .iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>(),

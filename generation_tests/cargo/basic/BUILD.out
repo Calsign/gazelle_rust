@@ -1,0 +1,20 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
+
+# gazelle:rust_mode generate_from_cargo
+
+rust_library(
+    name = "basic_lib",
+    srcs = [
+        "src/foobar.rs",
+        "src/lib.rs",
+    ],
+    crate_name = "basic",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "basic",
+    srcs = ["src/main.rs"],
+    visibility = ["//visibility:public"],
+    deps = [":basic_lib"],
+)

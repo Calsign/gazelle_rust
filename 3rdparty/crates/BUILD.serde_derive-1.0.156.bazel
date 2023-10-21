@@ -7,7 +7,7 @@
 ###############################################################################
 
 load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_proc_macro")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,8 +15,8 @@ package(default_visibility = ["//visibility:public"])
 #     "TODO",  # MIT OR Apache-2.0
 # ])
 
-rust_library(
-    name = "syn",
+rust_proc_macro(
+    name = "serde_derive",
     srcs = glob(["**/*.rs"]),
     compile_data = glob(
         include = ["**"],
@@ -30,23 +30,14 @@ rust_library(
         ],
     ),
     crate_features = [
-        "clone-impls",
         "default",
-        "derive",
-        "extra-traits",
-        "full",
-        "parsing",
-        "printing",
-        "proc-macro",
-        "quote",
-        "visit",
     ],
     crate_root = "src/lib.rs",
-    edition = "2018",
+    edition = "2015",
     rustc_flags = ["--cap-lints=allow"],
     tags = [
         "cargo-bazel",
-        "crate-name=syn",
+        "crate-name=serde_derive",
         "manual",
         "noclippy",
         "norustfmt",
@@ -85,29 +76,20 @@ rust_library(
         "@rules_rust//rust/platform:x86_64-unknown-none": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    version = "1.0.99",
+    version = "1.0.156",
     deps = [
-        "@crates_vendor__proc-macro2-1.0.43//:proc_macro2",
+        "@crates_vendor__proc-macro2-1.0.69//:proc_macro2",
         "@crates_vendor__quote-1.0.21//:quote",
-        "@crates_vendor__syn-1.0.99//:build_script_build",
-        "@crates_vendor__unicode-ident-1.0.3//:unicode_ident",
+        "@crates_vendor__serde_derive-1.0.156//:build_script_build",
+        "@crates_vendor__syn-1.0.109//:syn",
     ],
 )
 
 cargo_build_script(
-    name = "syn_build_script",
+    name = "serde_derive_build_script",
     srcs = glob(["**/*.rs"]),
     crate_features = [
-        "clone-impls",
         "default",
-        "derive",
-        "extra-traits",
-        "full",
-        "parsing",
-        "printing",
-        "proc-macro",
-        "quote",
-        "visit",
     ],
     crate_name = "build_script_build",
     crate_root = "build.rs",
@@ -122,23 +104,23 @@ cargo_build_script(
             "WORKSPACE.bazel",
         ],
     ),
-    edition = "2018",
+    edition = "2015",
     rustc_flags = [
         "--cap-lints=allow",
     ],
     tags = [
         "cargo-bazel",
-        "crate-name=syn",
+        "crate-name=serde_derive",
         "manual",
         "noclippy",
         "norustfmt",
     ],
-    version = "1.0.99",
+    version = "1.0.156",
     visibility = ["//visibility:private"],
 )
 
 alias(
     name = "build_script_build",
-    actual = "syn_build_script",
+    actual = "serde_derive_build_script",
     tags = ["manual"],
 )

@@ -1,0 +1,25 @@
+[package]
+name = "all_kinds"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "named_executable"
+
+[[bin]]
+name = "another_executable"
+
+[[bin]]
+name = "multi_file_executable"
+
+[[bench]]
+name = "large_input"
+
+[[bench]]
+name = "multi_file_bench"
+
+[[example]]
+name = "simple"
+
+[[example]]
+name = "multi_file_example"

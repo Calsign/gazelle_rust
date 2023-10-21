@@ -120,3 +120,15 @@ func (p *Parser) GetLockfileCrates(request *pb.LockfileCratesRequest) (*pb.Lockf
 	}
 	return response, nil
 }
+
+func (p *Parser) ParseCargoToml(request *pb.CargoTomlRequest) (*pb.CargoTomlResponse, error) {
+	if err := p.WriteRequest(&pb.Request{
+		Kind: &pb.Request_CargoToml{CargoToml: request}}); err != nil {
+		return nil, err
+	}
+	response := &pb.CargoTomlResponse{}
+	if err := ReadResponse[*pb.CargoTomlResponse](p, response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}

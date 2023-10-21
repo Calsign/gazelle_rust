@@ -32,6 +32,12 @@ alias(
 )
 
 alias(
+    name = "cargo_toml",
+    actual = "@crates_vendor__cargo_toml-0.16.3//:cargo_toml",
+    tags = ["manual"],
+)
+
+alias(
     name = "clap",
     actual = "@crates_vendor__clap-3.2.20//:clap",
     tags = ["manual"],
@@ -45,6 +51,6 @@ alias(
 
 alias(
     name = "syn",
-    actual = "@crates_vendor__syn-1.0.99//:syn",
+    actual = "@crates_vendor__syn-1.0.109//:syn",
     tags = ["manual"],
 )

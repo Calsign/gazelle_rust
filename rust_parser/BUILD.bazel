@@ -31,6 +31,7 @@ rust_binary(
     deps = [
         ":lockfile_crates",
         ":parser",
+        "//3rdparty/crates:cargo_toml",
         "//3rdparty/crates:clap",
         "//proto:messages_rust_proto",
         "@rules_rust//proto/protobuf/3rdparty/crates:protobuf",
