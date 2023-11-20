@@ -2,6 +2,13 @@
 name = "gazelle"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+description = "Helper macros for the gazelle_rust build file generator"
+homepage = "https://github.com/Calsign/gazelle_rust/tree/main/macro"
+repository = "https://github.com/Calsign/gazelle_rust"
+keywords = ["bazel", "gazelle_rust"]
+categories = ["development-tools"]
+exclude = ["BUILD.bazel", "src/BUILD.bazel", "tests/BUILD.bazel"]
 
 [lib]
 name = "gazelle"
