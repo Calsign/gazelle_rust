@@ -12,8 +12,8 @@ http_archive(
     name = "rules_rust",
     # NOTE: This patch is currently necessary for gazelle_rust to parse crate_universe lockfiles.
     patches = ["@gazelle_rust//patches:rules_rust.patch"],
-    sha256 = "9d04e658878d23f4b00163a72da3db03ddb451273eb347df7d7c50838d698f49",
-    urls = ["https://github.com/bazelbuild/rules_rust/releases/download/0.26.0/rules_rust-v0.26.0.tar.gz"],
+    sha256 = "6501960c3e4da32495d1e1007ded0769a534cb195c30dea36aa54f9d8a3f0361",
+    urls = ["https://github.com/bazelbuild/rules_rust/releases/download/0.38.0/rules_rust-v0.38.0.tar.gz"],
 )
 
 load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_register_toolchains")
@@ -22,7 +22,7 @@ rules_rust_dependencies()
 
 rust_register_toolchains(
     edition = "2021",
-    versions = ["1.71.0"],
+    versions = ["1.75.0"],
 )
 
 load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_repository")

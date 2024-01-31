@@ -1,5 +1,5 @@
 {
-  "checksum": "da3f45c4d36a4f1124a98c17de1ec25230497180771133fe7fa49b64dfcb43e2",
+  "checksum": "39e800a68dc797562724578f7bfbedc8f42b4b38b850c769a2d41055fcda3aef",
   "crates": {
     "autocfg 1.1.0": {
       "name": "autocfg",
@@ -15,12 +15,9 @@
           "Library": {
             "crate_name": "autocfg",
             "crate_root": "src/lib.rs",
-            "srcs": {
-              "include": [
-                "**/*.rs"
-              ],
-              "exclude": []
-            }
+            "srcs": [
+              "**/*.rs"
+            ]
           }
         }
       ],
@@ -43,12 +40,9 @@
           "Library": {
             "crate_name": "direct_cargo_bazel_deps",
             "crate_root": ".direct_cargo_bazel_deps.rs",
-            "srcs": {
-              "include": [
-                "**/*.rs"
-              ],
-              "exclude": []
-            }
+            "srcs": [
+              "**/*.rs"
+            ]
           }
         }
       ],
@@ -85,12 +79,9 @@
           "Library": {
             "crate_name": "float_cmp",
             "crate_root": "src/lib.rs",
-            "srcs": {
-              "include": [
-                "**/*.rs"
-              ],
-              "exclude": []
-            }
+            "srcs": [
+              "**/*.rs"
+            ]
           }
         }
       ],
@@ -99,11 +90,14 @@
         "compile_data_glob": [
           "**"
         ],
-        "crate_features": [
-          "default",
-          "num-traits",
-          "ratio"
-        ],
+        "crate_features": {
+          "common": [
+            "default",
+            "num-traits",
+            "ratio"
+          ],
+          "selects": {}
+        },
         "deps": {
           "common": [
             {
@@ -132,24 +126,18 @@
           "Library": {
             "crate_name": "num_traits",
             "crate_root": "src/lib.rs",
-            "srcs": {
-              "include": [
-                "**/*.rs"
-              ],
-              "exclude": []
-            }
+            "srcs": [
+              "**/*.rs"
+            ]
           }
         },
         {
           "BuildScript": {
             "crate_name": "build_script_build",
             "crate_root": "build.rs",
-            "srcs": {
-              "include": [
-                "**/*.rs"
-              ],
-              "exclude": []
-            }
+            "srcs": [
+              "**/*.rs"
+            ]
           }
         }
       ],
@@ -191,5 +179,112 @@
   "workspace_members": {
     "direct-cargo-bazel-deps 0.0.1": ""
   },
-  "conditions": {}
+  "conditions": {
+    "aarch64-apple-darwin": [
+      "aarch64-apple-darwin"
+    ],
+    "aarch64-apple-ios": [
+      "aarch64-apple-ios"
+    ],
+    "aarch64-apple-ios-sim": [
+      "aarch64-apple-ios-sim"
+    ],
+    "aarch64-fuchsia": [
+      "aarch64-fuchsia"
+    ],
+    "aarch64-linux-android": [
+      "aarch64-linux-android"
+    ],
+    "aarch64-pc-windows-msvc": [
+      "aarch64-pc-windows-msvc"
+    ],
+    "aarch64-unknown-linux-gnu": [
+      "aarch64-unknown-linux-gnu"
+    ],
+    "aarch64-unknown-nixos-gnu": [
+      "aarch64-unknown-nixos-gnu"
+    ],
+    "aarch64-unknown-nto-qnx710": [
+      "aarch64-unknown-nto-qnx710"
+    ],
+    "arm-unknown-linux-gnueabi": [
+      "arm-unknown-linux-gnueabi"
+    ],
+    "armv7-linux-androideabi": [
+      "armv7-linux-androideabi"
+    ],
+    "armv7-unknown-linux-gnueabi": [
+      "armv7-unknown-linux-gnueabi"
+    ],
+    "i686-apple-darwin": [
+      "i686-apple-darwin"
+    ],
+    "i686-linux-android": [
+      "i686-linux-android"
+    ],
+    "i686-pc-windows-msvc": [
+      "i686-pc-windows-msvc"
+    ],
+    "i686-unknown-freebsd": [
+      "i686-unknown-freebsd"
+    ],
+    "i686-unknown-linux-gnu": [
+      "i686-unknown-linux-gnu"
+    ],
+    "powerpc-unknown-linux-gnu": [
+      "powerpc-unknown-linux-gnu"
+    ],
+    "riscv32imc-unknown-none-elf": [
+      "riscv32imc-unknown-none-elf"
+    ],
+    "riscv64gc-unknown-none-elf": [
+      "riscv64gc-unknown-none-elf"
+    ],
+    "s390x-unknown-linux-gnu": [
+      "s390x-unknown-linux-gnu"
+    ],
+    "thumbv7em-none-eabi": [
+      "thumbv7em-none-eabi"
+    ],
+    "thumbv8m.main-none-eabi": [
+      "thumbv8m.main-none-eabi"
+    ],
+    "wasm32-unknown-unknown": [
+      "wasm32-unknown-unknown"
+    ],
+    "wasm32-wasi": [
+      "wasm32-wasi"
+    ],
+    "x86_64-apple-darwin": [
+      "x86_64-apple-darwin"
+    ],
+    "x86_64-apple-ios": [
+      "x86_64-apple-ios"
+    ],
+    "x86_64-fuchsia": [
+      "x86_64-fuchsia"
+    ],
+    "x86_64-linux-android": [
+      "x86_64-linux-android"
+    ],
+    "x86_64-pc-windows-msvc": [
+      "x86_64-pc-windows-msvc"
+    ],
+    "x86_64-unknown-freebsd": [
+      "x86_64-unknown-freebsd"
+    ],
+    "x86_64-unknown-linux-gnu": [
+      "x86_64-unknown-linux-gnu"
+    ],
+    "x86_64-unknown-nixos-gnu": [
+      "x86_64-unknown-nixos-gnu"
+    ],
+    "x86_64-unknown-none": [
+      "x86_64-unknown-none"
+    ]
+  },
+  "direct_deps": [
+    "float-cmp 0.9.0"
+  ],
+  "direct_dev_deps": []
 }

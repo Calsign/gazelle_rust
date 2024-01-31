@@ -1,8 +1,8 @@
-diff --git crate_universe/src/lib.rs crate_universe/src/lib.rs
-index ae857172..447c5382 100644
+diff --git a/crate_universe/src/lib.rs b/crate_universe/src/lib.rs
+index 12d96332..ce59aeee 100644
 --- crate_universe/src/lib.rs
 +++ crate_universe/src/lib.rs
-@@ -1,12 +1,12 @@
+@@ -3,13 +3,13 @@
  pub mod cli;
  
  mod config;
@@ -11,6 +11,7 @@ index ae857172..447c5382 100644
  mod lockfile;
  mod metadata;
  mod rendering;
+ mod select;
  mod splicing;
 -mod utils;
 +pub mod utils;

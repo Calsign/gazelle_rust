@@ -34,7 +34,7 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
 
     let mut crates = Vec::new();
 
-    let mut add_crate = |id, is_proc_macro| {
+    let mut add_crate = |id: &_, is_proc_macro| {
         let crate_ = context.crates.get(id).expect("missing crate");
 
         if let Some(library_target_name) = &crate_.library_target_name {
@@ -53,34 +53,19 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
             .get(workspace_member)
             .expect("missing workspace member");
 
-        for dep in workspace_crate.common_attrs.deps.get_iter(None).unwrap() {
+        for dep in workspace_crate.common_attrs.deps.values() {
             add_crate(&dep.id, false);
         }
 
-        for dep in workspace_crate
-            .common_attrs
-            .deps_dev
-            .get_iter(None)
-            .unwrap()
-        {
+        for dep in workspace_crate.common_attrs.deps_dev.values() {
             add_crate(&dep.id, false);
         }
 
-        for proc_macro_dep in workspace_crate
-            .common_attrs
-            .proc_macro_deps
-            .get_iter(None)
-            .unwrap()
-        {
+        for proc_macro_dep in workspace_crate.common_attrs.proc_macro_deps.values() {
             add_crate(&proc_macro_dep.id, true);
         }
 
-        for proc_macro_dep in workspace_crate
-            .common_attrs
-            .proc_macro_deps_dev
-            .get_iter(None)
-            .unwrap()
-        {
+        for proc_macro_dep in workspace_crate.common_attrs.proc_macro_deps_dev.values() {
             add_crate(&proc_macro_dep.id, true);
         }
     }

@@ -1,0 +1,6 @@
+cargo.lock linguist-generated=true
+3rdparty/crates/** linguist-generated=true
+example/cargo.lock linguist-generated=true
+example/cargo.bazel.lock linguist-generated=true
+generation_tests/crate_universe/*/Cargo.Bazel.lock linguist-generated=true
+generation_tests/crate_universe/vendored/3rdparty/crates/** linguist-generated=true
