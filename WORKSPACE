@@ -61,6 +61,15 @@ rust_register_toolchains(
     versions = [versions.RUST_VERSION],
 )
 
+# rust-analyzer support
+
+# run the following command to generate rust-project.json:
+#   bazel run @rules_rust//tools/rust_analyzer:gen_rust_project
+
+load("@rules_rust//tools/rust_analyzer:deps.bzl", "rust_analyzer_dependencies")
+
+rust_analyzer_dependencies()
+
 # gazelle_rust dependencies
 
 load("//:deps1.bzl", "gazelle_rust_dependencies1")
