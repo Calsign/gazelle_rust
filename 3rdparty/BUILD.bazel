@@ -12,11 +12,11 @@ crates_vendor(
                 "visit",
                 "extra-traits",
             ],
-            version = "1.0",
+            version = "2",
         ),
         "clap": crate.spec(
             features = ["derive"],
-            version = "3.2",
+            version = "4",
         ),
         "lazy_static": crate.spec(
             version = "1.4",

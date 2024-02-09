@@ -6,16 +6,17 @@
 #     bazel run @//3rdparty:crates_vendor
 ###############################################################################
 
+load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
 load("@rules_rust//rust:defs.bzl", "rust_library")
 
 package(default_visibility = ["//visibility:public"])
 
 # licenses([
-#     "TODO",  # MIT
+#     "TODO",  # MIT OR Apache-2.0
 # ])
 
 rust_library(
-    name = "textwrap",
+    name = "windows_aarch64_gnullvm",
     srcs = glob(["**/*.rs"]),
     compile_data = glob(
         include = ["**"],
@@ -29,13 +30,13 @@ rust_library(
         ],
     ),
     crate_root = "src/lib.rs",
-    edition = "2018",
+    edition = "2021",
     rustc_flags = [
         "--cap-lints=allow",
     ],
     tags = [
         "cargo-bazel",
-        "crate-name=textwrap",
+        "crate-name=windows_aarch64_gnullvm",
         "manual",
         "noclippy",
         "norustfmt",
@@ -77,5 +78,45 @@ rust_library(
         "@rules_rust//rust/platform:x86_64-unknown-none": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    version = "0.15.0",
+    version = "0.52.0",
+    deps = [
+        "@crates_vendor__windows_aarch64_gnullvm-0.52.0//:build_script_build",
+    ],
+)
+
+cargo_build_script(
+    name = "windows_aarch64_gnullvm_build_script",
+    srcs = glob(["**/*.rs"]),
+    crate_name = "build_script_build",
+    crate_root = "build.rs",
+    data = glob(
+        include = ["**"],
+        exclude = [
+            "**/* *",
+            ".tmp_git_root/**/*",
+            "BUILD",
+            "BUILD.bazel",
+            "WORKSPACE",
+            "WORKSPACE.bazel",
+        ],
+    ),
+    edition = "2021",
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    tags = [
+        "cargo-bazel",
+        "crate-name=windows_aarch64_gnullvm",
+        "manual",
+        "noclippy",
+        "norustfmt",
+    ],
+    version = "0.52.0",
+    visibility = ["//visibility:private"],
+)
+
+alias(
+    name = "build_script_build",
+    actual = ":windows_aarch64_gnullvm_build_script",
+    tags = ["manual"],
 )

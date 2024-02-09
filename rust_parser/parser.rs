@@ -7,6 +7,7 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use syn::parse_file;
+use syn::punctuated::Punctuated;
 use syn::visit::{self, Visit};
 
 use messages_rust_proto::Hints;
@@ -157,8 +158,8 @@ enum Directive {
     Ignore,
 }
 
-impl Directive {
-    fn parse(meta: syn::Meta) -> Self {
+impl<'ast> Directive {
+    fn parse(meta: &'ast syn::Meta) -> Self {
         let path = meta.path();
         // TODO: proper error handling
         assert_eq!(
@@ -253,21 +254,25 @@ impl<'ast> AstVisitor<'ast> {
     fn visit_type_attrs(&mut self, attrs: &'ast Vec<syn::Attribute>) {
         // parse #[derive(A, B, ...)]
         for attr in attrs {
-            if let Ok(syn::Meta::List(list)) = attr.parse_meta() {
+            if let syn::Meta::List(list) = &attr.meta {
                 if let Some(ident) = list.path.get_ident() {
                     if ident == "derive" {
-                        for nested in list.nested {
-                            if let syn::NestedMeta::Meta(syn::Meta::Path(path)) = nested {
-                                if path.segments.len() > 1 {
-                                    // this dance moves it out to avoid a clone
-                                    self.add_import(
-                                        path.segments
-                                            .into_pairs()
-                                            .next()
-                                            .unwrap()
-                                            .into_value()
-                                            .ident,
-                                    );
+                        if let Ok(nested) = attr.parse_args_with(
+                            Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
+                        ) {
+                            for derive in nested {
+                                if let syn::Meta::Path(path) = derive {
+                                    if path.segments.len() > 1 {
+                                        // this dance moves it out to avoid a clone
+                                        self.add_import(
+                                            path.segments
+                                                .into_pairs()
+                                                .next()
+                                                .unwrap()
+                                                .into_value()
+                                                .ident,
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -280,15 +285,14 @@ impl<'ast> AstVisitor<'ast> {
     fn parse_directives(&self, attrs: &'ast Vec<syn::Attribute>) -> DirectiveSet {
         let mut directives = DirectiveSet::default();
         for attr in attrs {
-            if let Ok(meta) = attr.parse_meta() {
-                if meta
-                    .path()
+            if let syn::Meta::Path(path) = &attr.meta {
+                if path
                     .segments
                     .first()
                     .map(|seg| seg.ident == "gazelle")
                     .unwrap_or(false)
                 {
-                    directives.insert(Directive::parse(meta));
+                    directives.insert(Directive::parse(&attr.meta));
                 }
             }
         }
@@ -364,13 +368,19 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
 
         // parse #[cfg(test)]
         for attr in &node.attrs {
-            if let Ok(syn::Meta::List(list)) = attr.parse_meta() {
+            if let syn::Meta::List(list) = &attr.meta {
                 if let Some(ident) = list.path.get_ident() {
-                    if ident == "cfg" && list.nested.len() == 1 {
-                        if let syn::NestedMeta::Meta(syn::Meta::Path(path)) = &list.nested[0] {
-                            if let Some(ident) = path.get_ident() {
-                                if ident == "test" {
-                                    is_test_only = true;
+                    if ident == "cfg" {
+                        if let Ok(nested) = attr.parse_args_with(
+                            Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
+                        ) {
+                            if nested.len() == 1 {
+                                if let syn::Meta::Path(path) = &nested[0] {
+                                    if let Some(ident) = path.get_ident() {
+                                        if ident == "test" {
+                                            is_test_only = true;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -398,7 +408,7 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
             self.hints.has_main = true;
         } else {
             for attr in &node.attrs {
-                if let Ok(syn::Meta::Path(path)) = attr.parse_meta() {
+                if let syn::Meta::Path(path) = &attr.meta {
                     if let Some(ident) = path.get_ident() {
                         if ident == "test" {
                             self.hints.has_test = true;

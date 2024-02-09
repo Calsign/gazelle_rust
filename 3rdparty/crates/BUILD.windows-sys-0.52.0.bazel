@@ -15,7 +15,7 @@ package(default_visibility = ["//visibility:public"])
 # ])
 
 rust_library(
-    name = "clap_lex",
+    name = "windows_sys",
     srcs = glob(["**/*.rs"]),
     compile_data = glob(
         include = ["**"],
@@ -28,6 +28,13 @@ rust_library(
             "WORKSPACE.bazel",
         ],
     ),
+    crate_features = [
+        "Win32",
+        "Win32_Foundation",
+        "Win32_System",
+        "Win32_System_Console",
+        "default",
+    ],
     crate_root = "src/lib.rs",
     edition = "2021",
     rustc_flags = [
@@ -35,7 +42,7 @@ rust_library(
     ],
     tags = [
         "cargo-bazel",
-        "crate-name=clap_lex",
+        "crate-name=windows-sys",
         "manual",
         "noclippy",
         "norustfmt",
@@ -77,8 +84,8 @@ rust_library(
         "@rules_rust//rust/platform:x86_64-unknown-none": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    version = "0.2.4",
+    version = "0.52.0",
     deps = [
-        "@crates_vendor__os_str_bytes-6.3.0//:os_str_bytes",
+        "@crates_vendor__windows-targets-0.52.0//:windows_targets",
     ],
 )
