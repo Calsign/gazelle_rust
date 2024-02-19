@@ -1,7 +1,7 @@
 versions = struct(
     # gazelle
-    GAZELLE_VERSION = "0.32.0",
-    GAZELLE_SHA256 = "29218f8e0cebe583643cbf93cae6f971be8a2484cdcfa1e45057658df8d54002",
+    GAZELLE_VERSION = "0.35.0",
+    GAZELLE_SHA256 = "32938bda16e6700063035479063d9d24c60eda8d79fd4739563f50d331cb3209",
 
     # rules_go
     RULES_GO_VERSION = "0.41.0",
