@@ -137,7 +137,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
                     res => res?,
                 }
-                let size = CodedInputStream::from_bytes(&buf[..SF32]).read_uint32()? as usize;
+                let size = CodedInputStream::from_bytes(&buf[..SF32]).read_sfixed32()? as usize;
                 if size > buf.len() {
                     // grow buffer as needed
                     buf = vec![0; size];
