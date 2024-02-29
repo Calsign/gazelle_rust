@@ -17,8 +17,8 @@ import typing as T
 GAZELLE_RUST_COMMIT = "04e5450054ba5c89013022ad14c50b68c05214fd"
 GAZELLE_RUST_SHA256 = "41b9261187aeb6a6e0d097ebbcd5e10cf89c439d950b9398d5bdc10abf614ab5"
 
-RULES_RUST_VERSION = "0.28.0"
-RULES_RUST_SHA256 = "c46bdafc582d9bd48a6f97000d05af4829f62d5fee10a2a3edddf2f3d9a232c1"
+RULES_RUST_VERSION = "0.40.0"
+RULES_RUST_SHA256 = "c30dfdf1e86fd50650a76ea645b3a45f2f00667b06187a685e9554e167ca97ee"
 
 RUST_VERSION = "1.73.0"
 
@@ -71,7 +71,6 @@ http_archive(
 http_archive(
     name = "rules_rust",
     # This patch is currently necessary for gazelle_rust to parse crate_universe lockfiles.
-    patches = ["@gazelle_rust//patches:rules_rust.patch"],
     sha256 = "{sha256}",
     urls = ["https://github.com/bazelbuild/rules_rust/releases/download/{version}/rules_rust-v{version}.tar.gz"],
 )

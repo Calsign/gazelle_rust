@@ -45,7 +45,6 @@ gazelle_dependencies()
 
 http_archive(
     name = "rules_rust",
-    patches = ["//patches:rules_rust.patch"],
     sha256 = versions.RULES_RUST_SHA256,
     urls = [
         "https://github.com/bazelbuild/rules_rust/releases/download/{0}/rules_rust-v{0}.tar.gz".format(versions.RULES_RUST_VERSION),
