@@ -70,7 +70,6 @@ http_archive(
             """
 http_archive(
     name = "rules_rust",
-    # This patch is currently necessary for gazelle_rust to parse crate_universe lockfiles.
     sha256 = "{sha256}",
     urls = ["https://github.com/bazelbuild/rules_rust/releases/download/{version}/rules_rust-v{version}.tar.gz"],
 )
