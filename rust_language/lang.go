@@ -9,6 +9,8 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+
+	"github.com/calsign/gazelle_rust/builtin_cfg_mapping"
 )
 
 var (
@@ -39,11 +41,18 @@ var (
 	cratesPrefixDirective string = "rust_crates_prefix"
 
 	// Override whether an external crate should be considered a proc_macro crate.
-	// usage: # gazelle:rust_override_proc_macro <crate name> <true|false>
+	// usage:
+	//   # gazelle:rust_override_proc_macro <crate name> <true|false>
 	procMacroOverrideDirective string = "rust_override_proc_macro"
 
 	// Remove an external crate from the "unused crates" warning.
 	allowUnusedCrateDirective string = "rust_allow_unused_crate"
+
+	// Add an additional mapping from rust cfg to bazel configuration.
+	// Usage:
+	//   # gazelle:rust_cfg_mapping windows @platforms//os:windows
+	//   # gazelle:rust_cfg_mapping target_family=windows @platforms//os:windows
+	cfgMappingDirective string = "rust_cfg_mapping"
 )
 
 type rustConfig struct {
@@ -52,6 +61,7 @@ type rustConfig struct {
 	CratesPrefix       string
 	ProcMacroOverrides map[string]bool
 	KindMapInverse     map[string]string
+	CfgMapping         map[string]string
 }
 
 func (cfg *rustConfig) Clone() *rustConfig {
@@ -141,7 +151,8 @@ func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 
 func (*rustLang) KnownDirectives() []string {
 	return []string{modeDirective, lockfileDirective, cargoLockfileDirective,
-		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective}
+		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective,
+		cfgMappingDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
@@ -158,6 +169,7 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 			CratesPrefix:       "",
 			ProcMacroOverrides: make(map[string]bool),
 			KindMapInverse:     make(map[string]string),
+			CfgMapping:         builtin_cfg_mapping.BuiltinCfgMapping,
 		}
 	} else {
 		// NOTE(will): important to clone so that we don't leak state across directories
@@ -214,6 +226,20 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 						procMacroOverrideDirective, procMacroOverrideDirective)
 				}
 				cfg.ProcMacroOverrides[split[0]] = val
+			} else if directive.Key == cfgMappingDirective {
+				split := strings.Split(directive.Value, " ")
+				if len(split) != 2 {
+					l.Log(c, logFatal, f, "bad %s, should be gazelle:%s <rust cfg> <configuration label>",
+						cfgMappingDirective, cfgMappingDirective)
+				}
+				// NOTE: we don't split on '=' for storage or lookup, but we do enforce that there's
+				// nothing crazy going on
+				cfgSplit := strings.Split(split[0], "=")
+				if len(cfgSplit) > 2 {
+					l.Log(c, logFatal, f, "bad %s rust cfg, should be <value> or <key>=<value>",
+						cfgMappingDirective)
+				}
+				cfg.CfgMapping[split[0]] = split[1]
 			}
 		}
 	}

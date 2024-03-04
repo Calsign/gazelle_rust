@@ -1,0 +1,29 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "lib",
+    srcs = ["lib.rs"],
+    crate_features = [
+        "feature1",
+        "feature2",
+    ],
+    deps = [
+        ":feature1",
+        ":feature2",
+    ],
+)
+
+rust_library(
+    name = "feature1",
+    srcs = ["feature1.rs"],
+)
+
+rust_library(
+    name = "feature2",
+    srcs = ["feature2.rs"],
+)
+
+rust_library(
+    name = "feature3",
+    srcs = ["feature3.rs"],
+)

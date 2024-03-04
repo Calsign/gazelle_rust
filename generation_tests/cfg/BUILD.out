@@ -1,0 +1,40 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "lib1",
+    srcs = ["lib1.rs"],
+    deps = [":some_common_lib"] + select({
+        "@platforms//os:linux": [":some_linux_lib"],
+        "//conditions:default": [],
+    }) + select({
+        "@platforms//os:windows": [":some_windows_lib"],
+        "//conditions:default": [],
+    }),
+)
+
+rust_library(
+    name = "lib2",
+    srcs = ["lib2.rs"],
+    deps = select({
+        "@platforms//os:linux": [":some_linux_lib"],
+        "//conditions:default": [],
+    }) + select({
+        "@platforms//os:windows": [":some_windows_lib"],
+        "//conditions:default": [],
+    }),
+)
+
+rust_library(
+    name = "some_common_lib",
+    srcs = ["some_common_lib.rs"],
+)
+
+rust_library(
+    name = "some_linux_lib",
+    srcs = ["some_linux_lib.rs"],
+)
+
+rust_library(
+    name = "some_windows_lib",
+    srcs = ["some_windows_lib.rs"],
+)

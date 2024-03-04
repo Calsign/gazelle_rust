@@ -132,3 +132,15 @@ func (p *Parser) ParseCargoToml(request *pb.CargoTomlRequest) (*pb.CargoTomlResp
 	}
 	return response, nil
 }
+
+func (p *Parser) SimplifyBExpr(request *pb.SimplifyBExprRequest) (*pb.SimplifyBExprResponse, error) {
+	if err := p.WriteRequest(&pb.Request{
+		Kind: &pb.Request_SimplifyBexpr{SimplifyBexpr: request}}); err != nil {
+		return nil, err
+	}
+	response := &pb.SimplifyBExprResponse{}
+	if err := ReadResponse[*pb.SimplifyBExprResponse](p, response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}

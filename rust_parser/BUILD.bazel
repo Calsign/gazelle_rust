@@ -7,6 +7,7 @@ rust_library(
     srcs = ["parser.rs"],
     visibility = [":__subpackages__"],
     deps = [
+        "//3rdparty/crates:boolean_expression",
         "//3rdparty/crates:syn",
         "//proto:messages_rust_proto",
     ],
@@ -25,7 +26,10 @@ rust_library(
 
 rust_binary(
     name = "rust_parser",
-    srcs = ["main.rs"],
+    srcs = [
+        "cfg.rs",
+        "main.rs",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         ":lockfile_crates",

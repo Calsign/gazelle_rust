@@ -51,6 +51,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "boolean_expression"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52a13b46d1f5df9cd15e0215e96839bda5eb21a8718ca7e8c9e3ee168cb7e7c0"
+dependencies = [
+ "itertools",
+ "smallvec",
+]
+
+[[package]]
 name = "cargo-lock"
 version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -122,12 +132,19 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 name = "direct-cargo-bazel-deps"
 version = "0.0.1"
 dependencies = [
+ "boolean_expression",
  "cargo-lock",
  "cargo_toml",
  "clap",
  "lazy_static",
  "syn 2.0.43",
 ]
+
+[[package]]
+name = "either"
+version = "1.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11157ac094ffbdde99aa67b23417ebdd801842852b500e395a45a9c0aac03e4a"
 
 [[package]]
 name = "equivalent"
@@ -176,6 +193,15 @@ checksum = "8adf3ddd720272c6ea8bf59463c04e0f93d0bbf7c5439b691bca2987e0270897"
 dependencies = [
  "equivalent",
  "hashbrown",
+]
+
+[[package]]
+name = "itertools"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
+dependencies = [
+ "either",
 ]
 
 [[package]]
@@ -257,6 +283,12 @@ checksum = "96426c9936fd7a0124915f9185ea1d20aa9445cc9821142f0a73bc9207a2e186"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "smallvec"
+version = "1.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6ecd384b10a64542d77071bd64bd7b231f4ed5940fba55e98c3de13824cf3d7"
 
 [[package]]
 name = "strsim"

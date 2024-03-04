@@ -295,6 +295,7 @@ def aliases(
 _NORMAL_DEPENDENCIES = {
     "": {
         _COMMON_CONDITION: {
+            "boolean_expression": "@crates_vendor__boolean_expression-0.4.4//:boolean_expression",
             "cargo-lock": "@crates_vendor__cargo-lock-8.0.2//:cargo_lock",
             "cargo_toml": "@crates_vendor__cargo_toml-0.16.3//:cargo_toml",
             "clap": "@crates_vendor__clap-4.4.18//:clap",
@@ -466,6 +467,16 @@ def crate_repositories():
 
     maybe(
         http_archive,
+        name = "crates_vendor__boolean_expression-0.4.4",
+        sha256 = "52a13b46d1f5df9cd15e0215e96839bda5eb21a8718ca7e8c9e3ee168cb7e7c0",
+        type = "tar.gz",
+        urls = ["https://crates.io/api/v1/crates/boolean_expression/0.4.4/download"],
+        strip_prefix = "boolean_expression-0.4.4",
+        build_file = Label("@gazelle_rust//3rdparty/crates:BUILD.boolean_expression-0.4.4.bazel"),
+    )
+
+    maybe(
+        http_archive,
         name = "crates_vendor__cargo-lock-8.0.2",
         sha256 = "3c4c54d47a4532db3494ef7332c257ab57b02750daae3250d49e01ee55201ce8",
         type = "tar.gz",
@@ -536,6 +547,16 @@ def crate_repositories():
 
     maybe(
         http_archive,
+        name = "crates_vendor__either-1.10.0",
+        sha256 = "11157ac094ffbdde99aa67b23417ebdd801842852b500e395a45a9c0aac03e4a",
+        type = "tar.gz",
+        urls = ["https://crates.io/api/v1/crates/either/1.10.0/download"],
+        strip_prefix = "either-1.10.0",
+        build_file = Label("@gazelle_rust//3rdparty/crates:BUILD.either-1.10.0.bazel"),
+    )
+
+    maybe(
+        http_archive,
         name = "crates_vendor__equivalent-1.0.1",
         sha256 = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5",
         type = "tar.gz",
@@ -592,6 +613,16 @@ def crate_repositories():
         urls = ["https://crates.io/api/v1/crates/indexmap/2.0.2/download"],
         strip_prefix = "indexmap-2.0.2",
         build_file = Label("@gazelle_rust//3rdparty/crates:BUILD.indexmap-2.0.2.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "crates_vendor__itertools-0.9.0",
+        sha256 = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b",
+        type = "tar.gz",
+        urls = ["https://crates.io/api/v1/crates/itertools/0.9.0/download"],
+        strip_prefix = "itertools-0.9.0",
+        build_file = Label("@gazelle_rust//3rdparty/crates:BUILD.itertools-0.9.0.bazel"),
     )
 
     maybe(
@@ -692,6 +723,16 @@ def crate_repositories():
         urls = ["https://crates.io/api/v1/crates/serde_spanned/0.6.3/download"],
         strip_prefix = "serde_spanned-0.6.3",
         build_file = Label("@gazelle_rust//3rdparty/crates:BUILD.serde_spanned-0.6.3.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "crates_vendor__smallvec-1.13.1",
+        sha256 = "e6ecd384b10a64542d77071bd64bd7b231f4ed5940fba55e98c3de13824cf3d7",
+        type = "tar.gz",
+        urls = ["https://crates.io/api/v1/crates/smallvec/1.13.1/download"],
+        strip_prefix = "smallvec-1.13.1",
+        build_file = Label("@gazelle_rust//3rdparty/crates:BUILD.smallvec-1.13.1.bazel"),
     )
 
     maybe(
@@ -935,6 +976,7 @@ def crate_repositories():
     )
 
     return [
+        struct(repo = "crates_vendor__boolean_expression-0.4.4", is_dev_dep = False),
         struct(repo = "crates_vendor__cargo-lock-8.0.2", is_dev_dep = False),
         struct(repo = "crates_vendor__cargo_toml-0.16.3", is_dev_dep = False),
         struct(repo = "crates_vendor__clap-4.4.18", is_dev_dep = False),

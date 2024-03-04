@@ -26,6 +26,12 @@ filegroup(
 
 # Workspace Member Dependencies
 alias(
+    name = "boolean_expression",
+    actual = "@crates_vendor__boolean_expression-0.4.4//:boolean_expression",
+    tags = ["manual"],
+)
+
+alias(
     name = "cargo-lock",
     actual = "@crates_vendor__cargo-lock-8.0.2//:cargo_lock",
     tags = ["manual"],

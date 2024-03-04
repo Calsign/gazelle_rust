@@ -5,6 +5,7 @@ message Request {
         RustImportsRequest rust_imports = 1;
         LockfileCratesRequest lockfile_crates = 2;
         CargoTomlRequest cargo_toml = 3;
+        SimplifyBExprRequest simplify_bexpr = 4;
     }
 }
 
@@ -23,15 +24,45 @@ message Hints {
     bool has_proc_macro = 3;
 }
 
+message KeyValue {
+    string key = 1;
+    string value = 2;
+}
+
+message BExprAtom {
+    oneof atom {
+        string value = 1;
+        KeyValue key_value = 2;
+    }
+}
+
+message BExprSeq {
+    repeated BExpr values = 1;
+}
+
+message BExpr {
+    oneof expr {
+        BExprAtom atom = 1;
+        bool constant = 2;
+        BExpr not = 3;
+        BExprSeq and = 4;
+        BExprSeq or = 5;
+    }
+}
+
+message Import {
+    string imp = 1;
+    BExpr cfg = 2;
+}
+
 // If successful, success = true and hints, imports, and test_imports are set.
 // If there is an unrecoverable error, success = false and error_msg is the error message.
 message RustImportsResponse {
     Hints hints = 1;
-    repeated string imports = 2;
-    repeated string test_imports = 3;
-    repeated string extern_mods = 4;
-    bool success = 5;
-    string error_msg = 6;
+    repeated Import imports = 2;
+    repeated string extern_mods = 3;
+    bool success = 4;
+    string error_msg = 5;
 }
 
 message LockfileCratesRequest {
@@ -69,4 +100,12 @@ message CargoTomlResponse {
     repeated CargoCrateInfo examples = 5;
     bool success = 6;
     string error_msg = 7;
+}
+
+message SimplifyBExprRequest {
+    BExpr bexpr = 1;
+}
+
+message SimplifyBExprResponse {
+    BExpr bexpr = 1;
 }

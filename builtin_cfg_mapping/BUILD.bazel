@@ -1,0 +1,12 @@
+load(":generate_builtin_cfg_mapping.bzl", "generate_builtin_cfg_mapping")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+generate_builtin_cfg_mapping()
+
+# keep
+go_library(
+    name = "builtin_cfg_mapping",
+    srcs = [":builtin_cfg_mapping_src"],
+    importpath = "github.com/calsign/gazelle_rust/builtin_cfg_mapping",
+    visibility = ["//visibility:public"],
+)

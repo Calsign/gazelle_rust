@@ -1,5 +1,7 @@
 #![deny(unused_must_use)]
 
+mod cfg;
+
 use std::error::Error;
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -8,11 +10,7 @@ use clap::Parser;
 
 use protobuf::{CodedInputStream, CodedOutputStream, RepeatedField};
 
-use messages_rust_proto::{
-    CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, LockfileCratesRequest,
-    LockfileCratesRequest_oneof_lockfile, LockfileCratesResponse, Request, Request_oneof_kind,
-    RustImportsRequest, RustImportsResponse,
-};
+use messages_rust_proto as pb;
 
 #[derive(clap::Parser)]
 enum Args {
@@ -21,17 +19,22 @@ enum Args {
 }
 
 fn handle_rust_imports_request(
-    request: RustImportsRequest,
-) -> Result<RustImportsResponse, Box<dyn Error>> {
+    request: pb::RustImportsRequest,
+) -> Result<pb::RustImportsResponse, Box<dyn Error>> {
     let rust_imports = parser::parse_imports(PathBuf::from(request.file_path));
 
-    let mut response = RustImportsResponse::default();
+    let mut response = pb::RustImportsResponse::default();
     match rust_imports {
         Ok(rust_imports) => {
             response.set_success(true);
             response.set_hints(rust_imports.hints);
-            response.imports = RepeatedField::from_vec(rust_imports.imports);
-            response.test_imports = RepeatedField::from_vec(rust_imports.test_imports);
+            response.imports =
+                RepeatedField::from_iter(rust_imports.imports.into_iter().map(|(imp, cfg)| {
+                    let mut import = pb::Import::default();
+                    import.set_imp(imp);
+                    import.set_cfg(cfg::cfg_to_proto(cfg));
+                    import
+                }));
             response.extern_mods = RepeatedField::from_vec(rust_imports.extern_mods);
         }
         Err(err) => {
@@ -47,25 +50,25 @@ fn handle_rust_imports_request(
 }
 
 fn handle_lockfile_crates_request(
-    request: LockfileCratesRequest,
-) -> Result<LockfileCratesResponse, Box<dyn Error>> {
+    request: pb::LockfileCratesRequest,
+) -> Result<pb::LockfileCratesResponse, Box<dyn Error>> {
     let crates = match request.lockfile.unwrap() {
-        LockfileCratesRequest_oneof_lockfile::lockfile_path(path) => {
+        pb::LockfileCratesRequest_oneof_lockfile::lockfile_path(path) => {
             lockfile_crates::get_bazel_lockfile_crates(PathBuf::from(path))?
         }
-        LockfileCratesRequest_oneof_lockfile::cargo_lockfile_path(path) => {
+        pb::LockfileCratesRequest_oneof_lockfile::cargo_lockfile_path(path) => {
             lockfile_crates::get_cargo_lockfile_crates(PathBuf::from(path))?
         }
     };
 
-    let mut response = LockfileCratesResponse::default();
+    let mut response = pb::LockfileCratesResponse::default();
     response.set_crates(RepeatedField::from_vec(crates));
 
     Ok(response)
 }
 
-fn build_crate_info(product: cargo_toml::Product) -> CargoCrateInfo {
-    let mut crate_info = CargoCrateInfo::default();
+fn build_crate_info(product: cargo_toml::Product) -> pb::CargoCrateInfo {
+    let mut crate_info = pb::CargoCrateInfo::default();
 
     if let Some(name) = product.name {
         crate_info.set_name(name);
@@ -79,12 +82,12 @@ fn build_crate_info(product: cargo_toml::Product) -> CargoCrateInfo {
 }
 
 fn handle_cargo_toml_request(
-    request: CargoTomlRequest,
-) -> Result<CargoTomlResponse, Box<dyn Error>> {
+    request: pb::CargoTomlRequest,
+) -> Result<pb::CargoTomlResponse, Box<dyn Error>> {
     let mut manifest = cargo_toml::Manifest::from_path(&request.file_path)?;
     manifest.complete_from_path(&PathBuf::from(&request.file_path))?;
 
-    let mut response = CargoTomlResponse::default();
+    let mut response = pb::CargoTomlResponse::default();
     response.set_success(true);
 
     if let Some(lib) = manifest.lib {
@@ -106,17 +109,26 @@ fn handle_cargo_toml_request(
     Ok(response)
 }
 
+fn handle_simplify_bexpr_request(
+    request: pb::SimplifyBExprRequest,
+) -> Result<pb::SimplifyBExprResponse, Box<dyn Error>> {
+    let mut response = pb::SimplifyBExprResponse::default();
+    response.set_bexpr(cfg::cfg_to_proto(
+        cfg::proto_to_cfg(request.bexpr.unwrap()).simplify_via_bdd(),
+    ));
+    Ok(response)
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     match args {
         Args::OneShot { path } => {
-            let mut rust_imports = parser::parse_imports(path)?;
-            rust_imports.imports.sort();
+            let rust_imports = parser::parse_imports(path)?;
 
             println!("Imports:");
-            for import in rust_imports.imports {
-                println!("  {}", import);
+            for (import, cfg) in rust_imports.imports {
+                println!("  {}: {:?}", import, cfg);
             }
         }
         Args::StreamProto => {
@@ -144,18 +156,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
 
                 stdin.read_exact(&mut buf[..size])?;
-                let request: Request = protobuf::parse_from_bytes(&buf[..size])?;
+                let request: pb::Request = protobuf::parse_from_bytes(&buf[..size])?;
 
                 if let Some(kind) = request.kind {
                     let response: Box<dyn protobuf::Message> = match kind {
-                        Request_oneof_kind::rust_imports(request) => {
+                        pb::Request_oneof_kind::rust_imports(request) => {
                             Box::new(handle_rust_imports_request(request)?)
                         }
-                        Request_oneof_kind::lockfile_crates(request) => {
+                        pb::Request_oneof_kind::lockfile_crates(request) => {
                             Box::new(handle_lockfile_crates_request(request)?)
                         }
-                        Request_oneof_kind::cargo_toml(request) => {
+                        pb::Request_oneof_kind::cargo_toml(request) => {
                             Box::new(handle_cargo_toml_request(request)?)
+                        }
+                        pb::Request_oneof_kind::simplify_bexpr(request) => {
+                            Box::new(handle_simplify_bexpr_request(request)?)
                         }
                     };
 
