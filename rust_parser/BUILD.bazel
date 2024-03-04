@@ -20,7 +20,6 @@ rust_library(
         "//3rdparty/crates:cargo-lock",
         "//proto:messages_rust_proto",
         "@rules_rust//crate_universe:cargo_bazel",
-        "@rules_rust//crate_universe/3rdparty/crates:serde_json",
     ],
 )
 

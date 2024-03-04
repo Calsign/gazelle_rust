@@ -56,9 +56,6 @@ gazelle(
 # NOTE: use cargo_bazel to parse the lockfile
 # gazelle:resolve rust cargo_bazel @rules_rust//crate_universe:cargo_bazel
 
-# NOTE: need to use the version of serde_json from crate_universe so that it matches
-# gazelle:resolve rust serde_json @rules_rust//crate_universe/3rdparty/crates:serde_json
-
 # NOTE: would like to use more checks, but the full suite doesn't succeed on some external libraries
 nogo(
     name = "nogo",

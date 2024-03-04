@@ -8,8 +8,6 @@ use cargo_bazel::api::lockfile::CargoBazelLockfile;
 use messages_rust_proto::Package;
 
 pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>, Box<dyn Error>> {
-    // Surprisingly, using serde_json::from_str is much faster than using serde_json::from_reader.
-    // See: https://github.com/serde-rs/json/issues/160
     let context = match cargo_bazel::api::lockfile::parse(&lockfile_path) {
         Err(err) => {
             eprintln!(

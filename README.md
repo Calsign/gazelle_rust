@@ -30,10 +30,8 @@ http_archive(
 gazelle\_rust doesn't have any releases yet, so please just pick the latest commit on `main`. To
 determine the sha256, first set the value to `None`, then fill in the sha256 that bazel tells you.
 
-gazelle\_rust currently requires a patch to rules\_rust in order to expose the logic needed to parse
-crate\_universe lockfiles. This is required even if you don't use crate\_universe. gazelle\_rust
-provides patches that work both with and without the `-p1` flag, and `example/WORKSPACE` shows how
-to apply the patch to rules\_rust.
+gazelle\_rust requires rules_rust 0.40.0 or later. Previous versions required a patch to
+rules\_rust.
 
 The dependencies for gazelle\_rust itself are loaded through two repository rule macros, shown in
 `example/WORKSPACE`. This includes setting up gazelle, but you may use a different gazelle version
