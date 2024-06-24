@@ -1,5 +1,5 @@
-load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
-load("@io_bazel_rules_go//go:def.bzl", "nogo")
+load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("@rules_go//go:def.bzl", "nogo")
 
 # gazelle:exclude build
 # gazelle:exclude example
@@ -27,7 +27,7 @@ gazelle_binary(
     name = "gazelle_bin_with_go",
     languages = [
         "//rust_language",
-        "@bazel_gazelle//language/go",
+        "@gazelle//language/go",
     ],
     visibility = ["//visibility:public"],
 )

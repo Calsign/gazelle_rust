@@ -2,3 +2,5 @@
 /build
 /macro/target
 rust-project.json
+MODULE.bazel.lock
+.ijwb
