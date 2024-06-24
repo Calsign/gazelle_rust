@@ -1,0 +1,14 @@
+load("@gazelle//:def.bzl", "gazelle")
+
+# Tell gazelle_rust where crate_universe dependencies come from:
+
+# gazelle:rust_lockfile Cargo.lock
+# gazelle:rust_crates_prefix @crates//:
+
+# Gazelle target using the gazelle_rust-provided gazelle binary. You can also create your own
+# gazelle_binary target and add @gazelle_rust//rust_language to languages.
+# Run with: bazel run //:gazelle
+gazelle(
+    name = "gazelle",
+    gazelle = "@gazelle_rust//:gazelle_bin",
+)

@@ -5,7 +5,15 @@ module github.com/calsign/gazelle_rust
 
 go 1.22.4
 
-// require (
-// 	// github.com/golang/protobuf v1.5.4
-// 	google.golang.org/protobuf v1.33.0
-// )
+require (
+	github.com/bazelbuild/bazel-gazelle v0.37.0
+	github.com/bazelbuild/rules_go v0.48.1
+	google.golang.org/protobuf v1.34.2
+)
+
+require (
+	github.com/bazelbuild/buildtools v0.0.0-20240313121412-66c605173954 // indirect
+	golang.org/x/mod v0.16.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/tools/go/vcs v0.1.0-deprecated // indirect
+)
