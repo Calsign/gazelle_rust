@@ -17,4 +17,4 @@ build --config=clippy
 
 build:ci --keep_going --experimental_scale_timeouts=3 --config=check
 
-common --noenable_bzlmod
+common --enable_bzlmod
