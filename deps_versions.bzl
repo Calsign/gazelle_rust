@@ -8,7 +8,7 @@ versions = struct(
     RULES_GO_SHA256 = "278b7ff5a826f3dc10f04feaf0b70d48b68748ccd512d7f98bf442077f043fe3",
 
     # go
-    GO_VERSION = "1.21.0",
+    GO_VERSION = "1.22.5",
 
     # rules_rust
     RULES_RUST_VERSION = "0.40.0",
