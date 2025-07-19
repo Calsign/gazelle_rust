@@ -9,7 +9,7 @@ use clap::Parser;
 use protobuf::{CodedInputStream, CodedOutputStream, RepeatedField};
 
 use messages_rust_proto::{
-    CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, LockfileCratesRequest,
+    CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, Hints, LockfileCratesRequest,
     LockfileCratesRequest_oneof_lockfile, LockfileCratesResponse, Request, Request_oneof_kind,
     RustImportsRequest, RustImportsResponse,
 };
@@ -28,8 +28,13 @@ fn handle_rust_imports_request(
     let mut response = RustImportsResponse::default();
     match rust_imports {
         Ok(rust_imports) => {
+            let mut hints = Hints::default();
+            hints.set_has_main(rust_imports.hints.has_main);
+            hints.set_has_test(rust_imports.hints.has_test);
+            hints.set_has_proc_macro(rust_imports.hints.has_proc_macro);
+
             response.set_success(true);
-            response.set_hints(rust_imports.hints);
+            response.set_hints(hints);
             response.imports = RepeatedField::from_vec(rust_imports.imports);
             response.test_imports = RepeatedField::from_vec(rust_imports.test_imports);
             response.extern_mods = RepeatedField::from_vec(rust_imports.extern_mods);

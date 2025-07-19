@@ -10,13 +10,18 @@ use syn::parse_file;
 use syn::punctuated::Punctuated;
 use syn::visit::{self, Visit};
 
-use messages_rust_proto::Hints;
-
 pub struct RustImports {
     pub hints: Hints,
     pub imports: Vec<String>,
     pub test_imports: Vec<String>,
     pub extern_mods: Vec<String>,
+}
+
+#[derive(Debug, Default)]
+pub struct Hints {
+    pub has_main: bool,
+    pub has_test: bool,
+    pub has_proc_macro: bool,
 }
 
 pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
@@ -32,10 +37,14 @@ pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
         }
         file => file?,
     };
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
 
-    let ast = parse_file(&content)?;
+    parse_imports_from_str(&contents)
+}
+
+pub fn parse_imports_from_str(contents: &str) -> Result<RustImports, Box<dyn Error>> {
+    let ast = parse_file(contents)?;
     let mut visitor = AstVisitor::default();
     visitor.visit_file(&ast);
 
