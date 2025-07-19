@@ -31,6 +31,7 @@ lazy_static::lazy_static! {
                 "test_inner_mod_3",
                 "test_derive_1",
                 "test_attribute_1",
+                "z",
             ],
             expected_test_imports: vec![],
             expected_extern_mods: vec!["extern_mod"],

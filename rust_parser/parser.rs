@@ -161,6 +161,9 @@ struct AstVisitor<'ast> {
     hints: Hints,
     /// bare mods defined in external files
     extern_mods: Vec<String>,
+    /// mods that are disallowed from being added to the current scope; this is currently only used
+    /// for a hack, see below
+    mod_denylist: HashSet<Ident<'ast>>,
 }
 
 impl<'ast> Default for AstVisitor<'ast> {
@@ -172,6 +175,7 @@ impl<'ast> Default for AstVisitor<'ast> {
             scope_mods: HashSet::default(),
             hints: Hints::default(),
             extern_mods: Vec::default(),
+            mod_denylist: HashSet::new(),
         }
     }
 }
@@ -239,7 +243,7 @@ impl<'ast> AstVisitor<'ast> {
     fn add_mod<I: Into<Ident<'ast>>>(&mut self, ident: I) {
         let ident = ident.into();
 
-        if !self.scope_mods.contains(&ident) {
+        if !self.scope_mods.contains(&ident) && !self.mod_denylist.contains(&ident) {
             self.scope_mods.insert(ident.clone());
             self.mod_stack.back_mut().unwrap().mods.insert(ident);
         }
@@ -357,19 +361,29 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         // NOTE: We want to ignore any dependencies inside the ignored scope. However, we still want
         // to bring anything imported into scope, hence the visit::visit_item_use outside the
         // conditional below.
-        if !directives.should_ignore() {
+        let import = if !directives.should_ignore() {
             // the first path segment is an import
             match &node.tree {
-                syn::UseTree::Path(path) => self.add_import(&path.ident),
-                syn::UseTree::Name(name) => self.add_import(&name.ident),
-                _ => (),
+                syn::UseTree::Path(path) => Some(Ident::Ref(&path.ident)),
+                syn::UseTree::Name(name) => Some(Ident::Ref(&name.ident)),
+                _ => None,
             }
-        }
+        } else {
+            None
+        };
 
-        // Name-only uses, e.g. `use foobar;`, don't bring anything new into scope that isn't
-        // already in scope. We don't want to visit a name-only use, otherwise our logic would have
-        // it put itself in scope, which is wrong.
-        if !matches!(&node.tree, syn::UseTree::Name(_)) {
+        if let Some(import) = import {
+            // Name-only uses, e.g. `use foobar;`, don't bring anything new into scope that isn't
+            // already in scope. This also applies to uses which bring their own import into scope,
+            // e.g. `use foobar::foobar;`. If we were to permit this identifier to enter scope, our
+            // logic would remove it from the imports list at the end of the scope, which is wrong.
+            // This denylist approach is admittedly a big hack for lack of a better approach.
+            self.mod_denylist.insert(import.clone());
+            visit::visit_item_use(self, node);
+            self.mod_denylist.remove(&import);
+
+            self.add_import(import);
+        } else {
             visit::visit_item_use(self, node);
         }
     }

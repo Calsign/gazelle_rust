@@ -72,3 +72,5 @@ fn f(x: test_args_1::Something) -> test_ret_1::Something {
 mod extern_mod;
 
 use extern_mod::SomeExternThing;
+
+use z::z;
