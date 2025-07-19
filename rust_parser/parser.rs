@@ -501,6 +501,17 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         self.visit_attr_meta(&node.meta);
         visit::visit_attribute(self, node);
     }
+
+    fn visit_item_macro(&mut self, node: &'ast syn::ItemMacro) {
+        if let Some(macro_ident) = node.mac.path.get_ident() {
+            if macro_ident == "macro_rules" {
+                if let Some(new_ident) = &node.ident {
+                    self.add_mod(new_ident);
+                }
+            }
+        }
+        visit::visit_item_macro(self, node);
+    }
 }
 
 fn parse_use_imports<'ast>(use_tree: &'ast syn::UseTree, imports: &mut HashSet<Ident<'ast>>) {

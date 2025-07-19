@@ -88,3 +88,7 @@ impl N2 {}
 fn n3() {}
 
 use {test_bare_use_group1, test_bare_use_group2::bare_use_item};
+
+macro_rules! macros_are_in_scope {}
+
+pub use macros_are_in_scope;
