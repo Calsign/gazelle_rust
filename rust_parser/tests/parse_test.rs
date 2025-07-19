@@ -52,10 +52,16 @@ lazy_static::lazy_static! {
             ],
             expected_extern_mods: vec![],
         },
+        TestCase {
+            filename: "early_mod.rs",
+            expected_imports: vec!["ee"],
+            expected_test_imports: vec![],
+            expected_extern_mods: vec![],
+        },
     ];
 }
 
-fn assert_eq_vecs(actual: &[String], expected: &[String]) {
+fn assert_eq_vecs(actual: &[String], expected: &[String], msg: &str) {
     let actual_set: HashSet<_> = actual.iter().collect();
     let expected_set: HashSet<_> = expected.iter().collect();
     if actual_set != expected_set {
@@ -76,7 +82,7 @@ fn assert_eq_vecs(actual: &[String], expected: &[String]) {
                 println!("  {}", item);
             }
         }
-        panic!("vecs differ");
+        panic!("vecs differ: {msg}");
     }
 }
 
@@ -104,6 +110,7 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
                 .iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>(),
+            "imports",
         );
         assert_eq_vecs(
             &rust_imports.test_imports,
@@ -112,6 +119,7 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
                 .iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>(),
+            "test_imports",
         );
         assert_eq_vecs(
             &rust_imports.extern_mods,
@@ -120,6 +128,7 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
                 .iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>(),
+            "extern_modes",
         );
     }
 

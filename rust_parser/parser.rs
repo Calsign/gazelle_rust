@@ -48,21 +48,26 @@ pub fn parse_imports_from_str(contents: &str) -> Result<RustImports, Box<dyn Err
     let mut visitor = AstVisitor::default();
     visitor.visit_file(&ast);
 
-    let test_imports = visitor
+    let mut root_scope = visitor.mod_stack.pop_back().expect("no root scope");
+    assert!(visitor.mod_stack.is_empty(), "leftover scopes");
+
+    root_scope.trim_early_imports();
+
+    let import_set: HashSet<_> = root_scope.imports.iter().collect();
+
+    root_scope
         .test_imports
-        .difference(&visitor.imports)
-        .cloned()
-        .collect();
+        .retain(|test_import| !import_set.contains(test_import));
 
     Ok(RustImports {
         hints: visitor.hints,
-        imports: filter_imports(visitor.imports),
-        test_imports: filter_imports(test_imports),
+        imports: filter_imports(root_scope.imports),
+        test_imports: filter_imports(root_scope.test_imports),
         extern_mods: visitor.extern_mods,
     })
 }
 
-fn filter_imports(imports: HashSet<Ident>) -> Vec<String> {
+fn filter_imports(imports: Vec<Ident>) -> Vec<String> {
     imports
         .into_iter()
         .filter_map(|ident| {
@@ -122,21 +127,32 @@ impl<'ast> Ident<'ast> {
 #[derive(Debug, Default)]
 struct Scope<'ast> {
     /// mods in scope
-    mods: Vec<Ident<'ast>>,
+    mods: HashSet<Ident<'ast>>,
     /// whether this scope is behind #[test] or #[cfg(test)]
     is_test_only: bool,
     /// whether this scope is behind #[gazelle::ignore]
     // TODO: this is not currently used, but we could support #[gazelle::ignore] on things like
     // functions and blocks in the future
     is_ignored: bool,
+    /// crates that are imported in this scope
+    imports: Vec<Ident<'ast>>,
+    /// crates that are imported in test-only configurations in this scope
+    test_imports: Vec<Ident<'ast>>,
+}
+
+impl<'ast> Scope<'ast> {
+    /// Remove imports for mods that entered scope after the import appeared. This is uncommon, but
+    /// it's possible to access an identifier that's used later in the same or a parent scope, or to
+    /// access a module declared later in the file.
+    fn trim_early_imports(&mut self) {
+        self.imports.retain(|import| !self.mods.contains(import));
+        self.test_imports
+            .retain(|test_import| !self.mods.contains(test_import));
+    }
 }
 
 #[derive(Debug)]
 struct AstVisitor<'ast> {
-    /// crates that are imported
-    imports: HashSet<Ident<'ast>>,
-    /// crates that are imported in test-only configurations
-    test_imports: HashSet<Ident<'ast>>,
     /// stack of mods in scope
     mod_stack: VecDeque<Scope<'ast>>,
     /// all mods that are currently in scope (including parent scopes)
@@ -152,8 +168,6 @@ impl<'ast> Default for AstVisitor<'ast> {
         let mut mod_stack = VecDeque::new();
         mod_stack.push_back(Scope::default());
         Self {
-            imports: HashSet::default(),
-            test_imports: HashSet::default(),
             mod_stack,
             scope_mods: HashSet::default(),
             hints: Hints::default(),
@@ -215,9 +229,9 @@ impl<'ast> AstVisitor<'ast> {
 
         if !self.scope_mods.contains(&ident) && !self.is_ignored_scope() {
             if self.is_test_only_scope() {
-                self.test_imports.insert(ident);
+                self.mod_stack.back_mut().unwrap().test_imports.push(ident);
             } else {
-                self.imports.insert(ident);
+                self.mod_stack.back_mut().unwrap().imports.push(ident);
             }
         }
     }
@@ -227,7 +241,7 @@ impl<'ast> AstVisitor<'ast> {
 
         if !self.scope_mods.contains(&ident) {
             self.scope_mods.insert(ident.clone());
-            self.mod_stack.back_mut().unwrap().mods.push(ident);
+            self.mod_stack.back_mut().unwrap().mods.insert(ident);
         }
     }
 
@@ -235,17 +249,28 @@ impl<'ast> AstVisitor<'ast> {
         // TODO: create stack entry lazily so that we avoid it if there are no renames in this scope
         let current_scope = self.mod_stack.back().unwrap();
         self.mod_stack.push_back(Scope {
-            mods: Vec::new(),
+            mods: HashSet::new(),
             // scopes within test-only scopes are also test-only
             is_test_only: test || current_scope.is_test_only,
             is_ignored: ignored || current_scope.is_ignored,
+            imports: vec![],
+            test_imports: vec![],
         });
     }
 
     fn pop_scope(&mut self) {
-        for rename in self.mod_stack.pop_back().expect("hit bottom of stack").mods {
-            self.scope_mods.remove(&rename);
+        let mut scope = self.mod_stack.pop_back().expect("hit bottom of stack");
+
+        for rename in &scope.mods {
+            self.scope_mods.remove(rename);
         }
+
+        scope.trim_early_imports();
+
+        let parent_scope = self.mod_stack.back_mut().expect("no parent scope");
+
+        parent_scope.imports.extend(scope.imports);
+        parent_scope.test_imports.extend(scope.test_imports);
     }
 
     fn is_root_scope(&self) -> bool {
@@ -341,7 +366,12 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
             }
         }
 
-        visit::visit_item_use(self, node);
+        // Name-only uses, e.g. `use foobar;`, don't bring anything new into scope that isn't
+        // already in scope. We don't want to visit a name-only use, otherwise our logic would have
+        // it put itself in scope, which is wrong.
+        if !matches!(&node.tree, syn::UseTree::Name(_)) {
+            visit::visit_item_use(self, node);
+        }
     }
 
     fn visit_use_path(&mut self, node: &'ast syn::UsePath) {
