@@ -371,34 +371,27 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     fn visit_item_use(&mut self, node: &'ast syn::ItemUse) {
         let directives = self.parse_directives(&node.attrs);
 
+        let mut imports = HashSet::new();
+
         // NOTE: We want to ignore any dependencies inside the ignored scope. However, we still want
         // to bring anything imported into scope, hence the visit::visit_item_use outside the
         // conditional below.
-        let import = if !directives.should_ignore() {
-            // the first path segment is an import
-            match &node.tree {
-                syn::UseTree::Path(path) => Some(Ident::Ref(&path.ident)),
-                syn::UseTree::Name(name) => Some(Ident::Ref(&name.ident)),
-                _ => None,
-            }
-        } else {
-            None
-        };
-
-        if let Some(import) = import {
-            // Name-only uses, e.g. `use foobar;`, don't bring anything new into scope that isn't
-            // already in scope. This also applies to uses which bring their own import into scope,
-            // e.g. `use foobar::foobar;`. If we were to permit this identifier to enter scope, our
-            // logic would remove it from the imports list at the end of the scope, which is wrong.
-            // This denylist approach is admittedly a big hack for lack of a better approach.
-            self.mod_denylist.insert(import.clone());
-            visit::visit_item_use(self, node);
-            self.mod_denylist.remove(&import);
-
-            self.add_import(import);
-        } else {
-            visit::visit_item_use(self, node);
+        if !directives.should_ignore() {
+            parse_use_imports(&node.tree, &mut imports);
         }
+
+        for import in &imports {
+            self.add_import(import.clone());
+        }
+
+        // Name-only uses, e.g. `use foobar;`, don't bring anything new into scope that isn't
+        // already in scope. This also applies to uses which bring their own import into scope,
+        // e.g. `use foobar::foobar;`. If we were to permit this identifier to enter scope, our
+        // logic would remove it from the imports list at the end of the scope, which is wrong.
+        // This denylist approach is admittedly a big hack for lack of a better approach.
+        self.mod_denylist = imports;
+        visit::visit_item_use(self, node);
+        self.mod_denylist.clear();
     }
 
     fn visit_use_path(&mut self, node: &'ast syn::UsePath) {
@@ -506,5 +499,23 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
 
     fn visit_attribute(&mut self, node: &'ast syn::Attribute) {
         self.visit_attr_meta(&node.meta);
+        visit::visit_attribute(self, node);
+    }
+}
+
+fn parse_use_imports<'ast>(use_tree: &'ast syn::UseTree, imports: &mut HashSet<Ident<'ast>>) {
+    match use_tree {
+        syn::UseTree::Path(path) => {
+            imports.insert(Ident::Ref(&path.ident));
+        }
+        syn::UseTree::Name(name) => {
+            imports.insert(Ident::Ref(&name.ident));
+        }
+        syn::UseTree::Group(group) => {
+            for item in &group.items {
+                parse_use_imports(item, imports);
+            }
+        }
+        _ => (),
     }
 }

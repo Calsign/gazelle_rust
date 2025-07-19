@@ -86,3 +86,5 @@ impl N2 {}
 
 #[cfg_attr(not(feature = "x"), test_cfg_attr_macro_on_fn::cfg_attr_macro)]
 fn n3() {}
+
+use {test_bare_use_group1, test_bare_use_group2::bare_use_item};
