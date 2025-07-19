@@ -73,4 +73,16 @@ mod extern_mod;
 
 use extern_mod::SomeExternThing;
 
-use z::z;
+use test_same_name::test_same_name;
+
+#[cfg_attr(feature = "x", derive(test_cfg_attr_derive::CfgAttrDerive))]
+struct N1;
+
+#[cfg_attr(not(feature = "x"), test_cfg_attr_macro::cfg_attr_macro)]
+struct N2;
+
+#[cfg_attr(not(feature = "x"), test_cfg_attr_macro_on_impl::cfg_attr_macro)]
+impl N2 {}
+
+#[cfg_attr(not(feature = "x"), test_cfg_attr_macro_on_fn::cfg_attr_macro)]
+fn n3() {}

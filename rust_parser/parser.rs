@@ -289,34 +289,47 @@ impl<'ast> AstVisitor<'ast> {
         self.mod_stack.back().unwrap().is_ignored
     }
 
-    fn visit_type_attrs(&mut self, attrs: &'ast Vec<syn::Attribute>) {
-        // parse #[derive(A, B, ...)]
-        for attr in attrs {
-            if let syn::Meta::List(list) = &attr.meta {
+    fn visit_attr_meta(&mut self, meta: &syn::Meta) {
+        // parse #[derive(A, B, ...)] and #[cfg_attr(..., ...)]
+        match meta {
+            syn::Meta::Path(path) => {
+                if path.segments.len() > 1 {
+                    self.add_import(
+                        path.segments
+                            .pairs()
+                            .next()
+                            .unwrap()
+                            .into_value()
+                            .ident
+                            .clone(),
+                    );
+                }
+            }
+            syn::Meta::List(list) => {
                 if let Some(ident) = list.path.get_ident() {
                     if ident == "derive" {
-                        if let Ok(nested) = attr.parse_args_with(
+                        if let Ok(nested) = list.parse_args_with(
                             Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
                         ) {
                             for derive in nested {
-                                if let syn::Meta::Path(path) = derive {
-                                    if path.segments.len() > 1 {
-                                        // this dance moves it out to avoid a clone
-                                        self.add_import(
-                                            path.segments
-                                                .into_pairs()
-                                                .next()
-                                                .unwrap()
-                                                .into_value()
-                                                .ident,
-                                        );
-                                    }
-                                }
+                                self.visit_attr_meta(&derive);
+                            }
+                        }
+                    } else if ident == "cfg_attr" {
+                        if let Ok(nested) = list.parse_args_with(
+                            Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
+                        ) {
+                            // grab second child, which is the inner attribute
+                            let mut iter = nested.into_iter();
+                            iter.next();
+                            if let Some(inner) = iter.next() {
+                                self.visit_attr_meta(&inner);
                             }
                         }
                     }
                 }
             }
+            _ => (),
         }
     }
 
@@ -480,17 +493,18 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     }
 
     fn visit_item_struct(&mut self, node: &'ast syn::ItemStruct) {
-        self.visit_type_attrs(&node.attrs);
         visit::visit_item_struct(self, node);
     }
 
     fn visit_item_enum(&mut self, node: &'ast syn::ItemEnum) {
-        self.visit_type_attrs(&node.attrs);
         visit::visit_item_enum(self, node);
     }
 
     fn visit_item_type(&mut self, node: &'ast syn::ItemType) {
-        self.visit_type_attrs(&node.attrs);
         visit::visit_item_type(self, node);
+    }
+
+    fn visit_attribute(&mut self, node: &'ast syn::Attribute) {
+        self.visit_attr_meta(&node.meta);
     }
 }
