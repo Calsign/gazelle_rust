@@ -6,8 +6,8 @@ rust_test(
     crate_features = ["bazel"],
     data = ["//rust_parser:test_data"],
     deps = [
-        "//3rdparty/crates:lazy_static",
         "//rust_parser:parser",
+        "@crates//:lazy_static",
         "@rules_rust//tools/runfiles",
     ],
 )

@@ -1,0 +1,78 @@
+""" Gazelle module for Rust """
+
+module(
+    name = "gazelle_rust",
+    version = "0.1.0",
+    repo_name = "gazelle_rust",
+)
+
+### Go/Gazelle
+bazel_dep(name = "rules_go", version = "0.59.0")
+bazel_dep(name = "rules_proto", version = "7.1.0")
+bazel_dep(name = "gazelle", version = "0.47.0")
+
+# Go dependencies
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//:go.mod")
+use_repo(go_deps, "org_golang_google_protobuf")
+
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
+use_repo(go_sdk, "go_default_sdk")
+
+### Rust
+bazel_dep(name = "rules_rust", version = "0.67.0")
+
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(edition = "2024")
+use_repo(rust, "rust_toolchains")
+
+register_toolchains("@rust_toolchains//:all")
+
+### Protobuf
+
+bazel_dep(name = "rules_rust_protobuf", version = "0.67.0")
+
+# Rust dependencies
+crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate", isolate=True)
+crate.spec(
+    package = "cargo-lock",
+    version = "11.0.0",
+)
+crate.spec(
+    package = "cargo_toml",
+    version = "0.22.3",
+)
+crate.spec(
+    features = [
+        "full",
+        "visit",
+        "extra-traits",
+    ],
+    package = "syn",
+    version = "2",
+)
+crate.spec(
+    features = ["derive"],
+    package = "clap",
+    version = "4",
+)
+crate.spec(
+    package = "lazy_static",
+    version = "1.5.0",
+)
+
+rust_ext = use_extension("@rules_rust_protobuf//:extensions.bzl", "rust_ext")
+use_repo(
+    rust_ext,
+    "rules_rust_protobuf_deps",
+    "rules_rust_protobuf_deps__grpc-0.6.2",
+    "rules_rust_protobuf_deps__grpc-compiler-0.6.2",
+    "rules_rust_protobuf_deps__log-0.4.17",
+    "rules_rust_protobuf_deps__protobuf-2.8.2",
+    "rules_rust_protobuf_deps__protobuf-codegen-2.8.2",
+    "rules_rust_protobuf_deps__tls-api-0.1.22",
+    "rules_rust_protobuf_deps__tls-api-stub-0.1.22",
+)
+
+crate.from_specs()
+use_repo(crate, "crates")
