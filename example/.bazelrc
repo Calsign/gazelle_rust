@@ -1,1 +1,13 @@
-common --noenable_bzlmod
+# Best practice options for Bazel
+common --sandbox_default_allow_network=false
+common --incompatible_strict_action_env
+common --incompatible_disallow_empty_glob=true
+common --experimental_isolated_extension_usages
+
+# Prevent incompatible versions of MODULE.bazel and MODULE.bazel.lock from being committed.
+# If you update MODULE.bazel, always re-run `bazel mod deps --lockfile_mode=update` and commit
+# the resulting MODULE.bazel.lock alongside your MODULE.bazel changes.
+common --lockfile_mode=error
+
+test --test_verbose_timeout_warnings
+# End of best practice options for Bazel

@@ -1,0 +1,35 @@
+""" Gazelle module for Rust """
+
+module(
+    name = "rust_gazelle_example",
+    version = "0.0.0",
+)
+
+### Rust
+bazel_dep(name = "rules_rust", version = "0.67.0")
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(edition = "2024")
+use_repo(
+    rust,
+    "rust_toolchains",
+)
+
+register_toolchains("@rust_toolchains//:all")
+
+# Rust dependencies
+crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate")
+crate.from_cargo(
+    name = "crates",
+    cargo_lockfile = "//:Cargo.lock",
+    manifests = ["//:Cargo.toml"],
+)
+use_repo(crate, "crates")
+
+### Gazelle
+bazel_dep(name = "rules_go", version = "0.59.0")
+bazel_dep(name = "gazelle", version = "0.47.0")
+bazel_dep(name = "gazelle_rust", version = "0.1.0")
+local_path_override(
+    module_name = "gazelle_rust",
+    path = "..",
+)
