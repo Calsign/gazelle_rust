@@ -98,13 +98,13 @@ impl<'ast> From<&'ast syn::Ident> for Ident<'ast> {
     }
 }
 
-impl<'ast> From<syn::Ident> for Ident<'ast> {
+impl From<syn::Ident> for Ident<'_> {
     fn from(ident: syn::Ident) -> Self {
         Self::Owned(ident)
     }
 }
 
-impl<'ast> PartialEq<&str> for Ident<'ast> {
+impl PartialEq<&str> for Ident<'_> {
     fn eq(&self, other: &&str) -> bool {
         match self {
             Self::Ref(ident) => ident == other,
@@ -113,7 +113,7 @@ impl<'ast> PartialEq<&str> for Ident<'ast> {
     }
 }
 
-impl<'ast> Ident<'ast> {
+impl Ident<'_> {
     // NOTE: this is just matching the wrapping the implementation in syn::Ident
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
@@ -140,7 +140,7 @@ struct Scope<'ast> {
     test_imports: Vec<Ident<'ast>>,
 }
 
-impl<'ast> Scope<'ast> {
+impl Scope<'_> {
     /// Remove imports for mods that entered scope after the import appeared. This is uncommon, but
     /// it's possible to access an identifier that's used later in the same or a parent scope, or to
     /// access a module declared later in the file.
@@ -166,7 +166,7 @@ struct AstVisitor<'ast> {
     mod_denylist: HashSet<Ident<'ast>>,
 }
 
-impl<'ast> Default for AstVisitor<'ast> {
+impl Default for AstVisitor<'_> {
     fn default() -> Self {
         let mut mod_stack = VecDeque::new();
         mod_stack.push_back(Scope::default());
