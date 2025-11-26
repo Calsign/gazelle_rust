@@ -5,4 +5,4 @@ sh_binary(
     srcs = ["repin.sh"],
 )
 
-generation_tests()
+generation_tests(disabled_tests = [])
