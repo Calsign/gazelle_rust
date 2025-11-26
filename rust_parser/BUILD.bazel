@@ -6,10 +6,7 @@ rust_library(
     name = "parser",
     srcs = ["parser.rs"],
     visibility = [":__subpackages__"],
-    deps = [
-        "//proto:messages_rust_proto",
-        "@crates//:syn",
-    ],
+    deps = ["@crates//:syn"],
 )
 
 rust_library(
@@ -33,7 +30,7 @@ rust_binary(
         "//proto:messages_rust_proto",
         "@crates//:cargo_toml",
         "@crates//:clap",
-        "@rules_rust_protobuf_deps__protobuf-2.8.2//:protobuf",
+        "@rules_rust_protobuf//3rdparty/crates:protobuf",
     ],
 )
 

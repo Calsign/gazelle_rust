@@ -1,0 +1,15 @@
+[package]
+name = "gazelle_rust"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "rust_parser"
+path = "rust_parser/main.hs"
+
+[dependencies]
+cargo-lock = "11.0.0"
+cargo_toml = "0.22.3"
+syn = { version = "2", features = ["full", "visit", "extra-traits"]}
+clap = { version = "4", features = ["derive"]}
+lazy_static = "1.5.0"
