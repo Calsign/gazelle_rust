@@ -155,15 +155,15 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 		return nil, true
 	} else if override, ok := resolve.FindRuleWithOverride(c, spec, l.Name()); ok {
 		return &override, true
-	} else if crateName, ok := cfg.LockfileCrates.Crates[spec]; ok {
+	} else if crate, ok := cfg.LockfileCrates.Crates[spec]; ok {
 		var err error
-		label, err := label.Parse(cfg.CratesPrefix + crateName)
+		label, err := label.Parse(cfg.CratesPrefix + crate.Name)
 		if err != nil {
 			l.Log(c, logFatal, from, "bad %s: %v\n", cratesPrefixDirective, err)
 		}
 
 		// track this crate as used
-		cfg.LockfileCrates.UsedCrates[crateName] = true
+		cfg.LockfileCrates.UsedCrates[crate.Name] = true
 
 		return &label, true
 	} else if candidates := ix.FindRulesByImportWithConfig(c, spec, l.Name()); len(candidates) >= 1 {

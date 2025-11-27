@@ -5,6 +5,7 @@ message Request {
         RustImportsRequest rust_imports = 1;
         LockfileCratesRequest lockfile_crates = 2;
         CargoTomlRequest cargo_toml = 3;
+        CargoWorkspaceRequest cargo_workspace = 4;
     }
 }
 
@@ -45,6 +46,7 @@ message Package {
     string name = 1;
     string crate_name = 2;
     bool proc_macro = 3;
+    string version = 4;
 }
 
 message LockfileCratesResponse {
@@ -61,12 +63,35 @@ message CargoCrateInfo {
     bool proc_macro = 3;
 }
 
+message CargoCrateDependency {
+    string name = 1;
+    string version = 2;
+    bool workspace = 3;
+}
+
 message CargoTomlResponse {
     CargoCrateInfo library = 1;
     repeated CargoCrateInfo binaries = 2;
     repeated CargoCrateInfo tests = 3;
     repeated CargoCrateInfo benches = 4;
     repeated CargoCrateInfo examples = 5;
-    bool success = 6;
-    string error_msg = 7;
+    repeated CargoCrateDependency deps = 6;
+    bool success = 7;
+    string error_msg = 8;
+}
+
+message CargoWorkspaceRequest {
+    string cargo_workspace_path = 1;
+}
+
+message CargoWorkspaceDependency {
+    string name = 1;
+    string version = 2;
+    string path = 3;
+}
+
+message CargoWorkspaceResponse {
+    repeated CargoWorkspaceDependency deps = 1;
+    bool success = 2;
+    string error_msg = 3;
 }

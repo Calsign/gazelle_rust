@@ -14,15 +14,20 @@ var procMacroOverrides map[string]bool = map[string]bool{
 	"syn": false,
 }
 
+type LockfileCrate struct {
+	Name string
+	Versions []string
+}
+
 type LockfileCrates struct {
-	Crates map[resolve.ImportSpec]string
+	Crates map[resolve.ImportSpec]LockfileCrate
 	// track which crates have been used so that we can report unused crates
 	UsedCrates map[string]bool
 }
 
 func EmptyLockfileCrates() *LockfileCrates {
 	return &LockfileCrates{
-		Crates:     make(map[resolve.ImportSpec]string),
+		Crates:     make(map[resolve.ImportSpec]LockfileCrate),
 		UsedCrates: make(map[string]bool),
 	}
 }
@@ -69,7 +74,18 @@ func (l *rustLang) NewLockfileCrates(c *config.Config, lockfilePath string, carg
 			Lang: lang,
 			Imp:  crate.CrateName,
 		}
-		lockfileCrates.Crates[spec] = crate.Name
+		existingLockfileCrate, ok := lockfileCrates.Crates[spec]
+		if ok {
+			existingLockfileCrate.Versions = append(existingLockfileCrate.Versions, crate.Version)
+			lockfileCrates.Crates[spec] = existingLockfileCrate
+		} else {
+			lockfileCrate := LockfileCrate{
+				Name: crate.Name,
+				Versions: []string{crate.Version},
+			}
+			lockfileCrates.Crates[spec] = lockfileCrate
+		}
+
 	}
 
 	return lockfileCrates
@@ -79,8 +95,8 @@ func (l *LockfileCrates) UnusedCrates(allowedUnusedCrates map[string]bool) []str
 	unusedCrates := []string{}
 
 	for _, crate := range l.Crates {
-		if !l.UsedCrates[crate] && !allowedUnusedCrates[crate] {
-			unusedCrates = append(unusedCrates, crate)
+		if !l.UsedCrates[crate.Name] && !allowedUnusedCrates[crate.Name] {
+			unusedCrates = append(unusedCrates, crate.Name)
 		}
 	}
 

@@ -11,6 +11,7 @@ go_library(
         "parser.go",
         "resolve.go",
         "utils.go",
+        "workspace_manifest.go",
     ],
     data = ["//rust_parser"],
     importpath = "github.com/calsign/gazelle_rust/rust_language",

@@ -29,6 +29,7 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
             package.set_name(crate_.name().to_string());
             package.set_crate_name(library_target_name.to_string());
             package.set_proc_macro(is_proc_macro);
+            package.set_version(crate_.version().to_string());
 
             crates.push(package);
         }
@@ -93,6 +94,7 @@ pub fn get_cargo_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
                 .dependencies
                 .iter()
                 .any(|dep| is_proc_macro_dep(dep.name.as_str()));
+            package.version = pkg.version.to_string();
             crates.push(package);
         }
     }
