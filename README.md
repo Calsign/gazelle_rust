@@ -10,9 +10,9 @@ References:
 
 ## Setup
 
-[`example/WORKSPACE`](./example/WORKSPACE) shows how
+[`example/WORKSPACE`](./example/MODULE.bazel) shows how
 to load rules\_rust and gazelle\_rust together. In a real project, you would need to use
-`http_archive` instead of `local_repository`, for example:
+`archive_override` instead of `local_path_override`, for example:
 
 ```py
 GAZELLE_RUST_COMMIT = "<commit>"
@@ -106,7 +106,7 @@ selected on a per-directory basis.
 ## Crate universe
 
 The example shows how to handle crate universe dependencies with gazelle\_rust.
-[`example/WORKSPACE`](./example/WORKSPACE) shows how
+[`example/WORKSPACE`](./example/MODULE.bazel) shows how
 to load crate universe dependencies, please refer to the [rules\_rust
 documentation](http://bazelbuild.github.io/rules_rust/crate_universe.html) for more information. The
 example shows the repository rule approach, but gazelle\_rust also supports the vendored approach.
