@@ -9,6 +9,7 @@ def gofmt_test(name, srcs):
     native.sh_test(
         name = name,
         srcs = ["//util:run_gofmt.sh"],
-        data = ["@go_sdk//:bin/gofmt", filegroup_name],
+        data = ["@go_default_sdk//:bin/gofmt", filegroup_name],
         args = ["$(rootpaths {})".format(filegroup_name)],
+        deps = ["@rules_shell//shell/runfiles"],
     )

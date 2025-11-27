@@ -1,6 +1,5 @@
 #![deny(unused_must_use)]
 
-use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 
@@ -83,31 +82,19 @@ pub fn get_cargo_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
         file => file?,
     };
 
-    let mut is_proc_macro = HashMap::new();
-    let mut deps = Vec::new();
-
-    for pkg in lockfile.packages {
-        if is_workspace_target(pkg.name.as_str()) {
-            deps.extend(pkg.dependencies);
-        } else {
-            is_proc_macro.insert(
-                pkg.name.as_str().to_string(),
-                pkg.dependencies
-                    .iter()
-                    .any(|dep| is_proc_macro_dep(dep.name.as_str())),
-            );
-        }
-    }
-
     let mut crates = Vec::new();
 
-    for dep in deps {
-        let mut package = Package::default();
-        package.name = dep.name.as_str().to_string();
-        package.crate_name = package.name.replace('-', "_");
-        package.proc_macro = is_proc_macro[dep.name.as_str()];
-
-        crates.push(package);
+    for pkg in lockfile.packages {
+        if !is_workspace_target(pkg.name.as_str()) {
+            let mut package = Package::default();
+            package.name = pkg.name.as_str().to_string();
+            package.crate_name = package.name.replace('-', "_");
+            package.proc_macro = pkg
+                .dependencies
+                .iter()
+                .any(|dep| is_proc_macro_dep(dep.name.as_str()));
+            crates.push(package);
+        }
     }
 
     Ok(crates)

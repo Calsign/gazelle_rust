@@ -1,4 +1,4 @@
-load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary", "gazelle_generation_test")
+load("@gazelle//:def.bzl", "gazelle_generation_test")
 
 def generation_tests(disabled_tests):
     disabled_tests = {test_name: False for test_name in disabled_tests}

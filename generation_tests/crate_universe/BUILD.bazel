@@ -5,4 +5,11 @@ sh_binary(
     srcs = ["repin.sh"],
 )
 
-generation_tests(disabled_tests = [])
+# FIXME The detection of unused crates currently cannot work when Cargo lock
+# is used as is the case for this repository. In order to avoid complaints
+# from gazelle and non-zero exit codes in CI we do not apply (for now)
+# "patches/bazel-gazelle.patch", but this also makes it impossible for the
+# "standard_unused_crates" test to pass. This test will be re-enabled later
+# when an approach for detecting unused crates with Cargo lock will be put
+# in place.
+generation_tests(disabled_tests = ["standard_unused_crates"])

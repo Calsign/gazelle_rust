@@ -1,12 +1,12 @@
-load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
-load("@io_bazel_rules_go//go:def.bzl", "nogo")
+load("@gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle", "gazelle_binary")
+load("@rules_go//go:def.bzl", "nogo")
 
 # gazelle:exclude build
 # gazelle:exclude example
 # gazelle:exclude generation_tests
 
-# gazelle:rust_cargo_lockfile cargo.lock
-# gazelle:rust_crates_prefix //3rdparty/crates:
+# gazelle:rust_cargo_lockfile Cargo.lock
+# gazelle:rust_crates_prefix @crates//:
 
 exports_files(
     srcs = ["cargo.lock"],
@@ -25,9 +25,8 @@ gazelle_binary(
 # used by this project, which uses both rust and go
 gazelle_binary(
     name = "gazelle_bin_with_go",
-    languages = [
+    languages = DEFAULT_LANGUAGES + [
         "//rust_language",
-        "@bazel_gazelle//language/go",
     ],
     visibility = ["//visibility:public"],
 )
@@ -51,7 +50,7 @@ gazelle(
 )
 
 # NOTE: need to use the version of protobuf from rules_rust so that it matches
-# gazelle:resolve rust protobuf @rules_rust//proto/protobuf/3rdparty/crates:protobuf
+# gazelle:resolve rust protobuf @rules_rust_protobuf//3rdparty/crates:protobuf
 
 # NOTE: use cargo_bazel to parse the lockfile
 # gazelle:resolve rust cargo_bazel @rules_rust//crate_universe:cargo_bazel

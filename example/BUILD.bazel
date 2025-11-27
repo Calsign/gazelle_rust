@@ -1,8 +1,8 @@
-load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@gazelle//:def.bzl", "gazelle")
 
 # Tell gazelle_rust where crate_universe dependencies come from:
 
-# gazelle:rust_lockfile cargo.bazel.lock
+# gazelle:rust_cargo_lockfile Cargo.lock
 # gazelle:rust_crates_prefix @crates//:
 
 # Gazelle target using the gazelle_rust-provided gazelle binary. You can also create your own
