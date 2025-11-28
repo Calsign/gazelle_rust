@@ -121,6 +121,18 @@ func (p *Parser) GetLockfileCrates(request *pb.LockfileCratesRequest) (*pb.Lockf
 	return response, nil
 }
 
+func (p *Parser) GetWorkspaceManifest(request *pb.CargoWorkspaceRequest) (*pb.CargoWorkspaceResponse, error) {
+	if err := p.WriteRequest(&pb.Request{
+		Kind: &pb.Request_CargoWorkspace{CargoWorkspace: request}}); err != nil {
+		return nil, err
+	}
+	response := &pb.CargoWorkspaceResponse{}
+	if err := ReadResponse[*pb.CargoWorkspaceResponse](p, response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 func (p *Parser) ParseCargoToml(request *pb.CargoTomlRequest) (*pb.CargoTomlResponse, error) {
 	if err := p.WriteRequest(&pb.Request{
 		Kind: &pb.Request_CargoToml{CargoToml: request}}); err != nil {

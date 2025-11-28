@@ -11,7 +11,8 @@ use protobuf::{CodedInputStream, CodedOutputStream, RepeatedField};
 use messages_rust_proto::{
     CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, Hints, LockfileCratesRequest,
     LockfileCratesRequest_oneof_lockfile, LockfileCratesResponse, Request, Request_oneof_kind,
-    RustImportsRequest, RustImportsResponse,
+    RustImportsRequest, RustImportsResponse, CargoCrateDependency, CargoWorkspaceRequest,
+    CargoWorkspaceDependency, CargoWorkspaceResponse
 };
 
 #[derive(clap::Parser)]
@@ -83,6 +84,23 @@ fn build_crate_info(product: cargo_toml::Product) -> CargoCrateInfo {
     crate_info
 }
 
+fn build_cargo_crate_dependency(input: (String, cargo_toml::Dependency)) -> CargoCrateDependency {
+    let (name, spec) = input;
+
+    let mut dep = CargoCrateDependency::default();
+
+    dep.set_name(name);
+    let (version, workspace) =  match spec {
+        cargo_toml::Dependency::Simple(x) => (x, false),
+        cargo_toml::Dependency::Inherited(_) => (String::new(), true),
+        cargo_toml::Dependency::Detailed(x) => (x.version.unwrap_or_default(), x.inherited)
+    };
+    dep.set_version(version);
+    dep.set_workspace(workspace);
+
+    dep
+}
+
 fn handle_cargo_toml_request(
     request: CargoTomlRequest,
 ) -> Result<CargoTomlResponse, Box<dyn Error>> {
@@ -107,6 +125,44 @@ fn handle_cargo_toml_request(
     response.set_examples(RepeatedField::from_vec(
         manifest.example.into_iter().map(build_crate_info).collect(),
     ));
+    response.set_deps(RepeatedField::from_vec(
+        manifest.dependencies.into_iter().map(build_cargo_crate_dependency).collect(),
+    ));
+
+    Ok(response)
+}
+
+fn build_cargo_workspace_dependency(input: (String, cargo_toml::Dependency)) -> CargoWorkspaceDependency {
+    let (name, spec) = input;
+
+    let mut dep = CargoWorkspaceDependency::default();
+
+    dep.set_name(name.clone());
+    let (version, path) =  match spec {
+        cargo_toml::Dependency::Simple(x) => (x, String::new()),
+        cargo_toml::Dependency::Inherited(_) =>
+            panic!("Inherited dependency {} in Cargo workspace file", name),
+        cargo_toml::Dependency::Detailed(x) => (x.version.unwrap_or_default(), x.path.unwrap_or_default())
+    };
+    dep.set_version(version);
+    dep.set_path(path);
+
+    dep
+}
+
+fn handle_cargo_workspace_request(
+    request: CargoWorkspaceRequest,
+) -> Result<CargoWorkspaceResponse, Box<dyn Error>> {
+    let manifest = cargo_toml::Manifest::from_path(&request.cargo_workspace_path)?;
+
+    let mut response = CargoWorkspaceResponse::default();
+    response.set_success(true);
+
+    if let Some(workspace) = manifest.workspace {
+        response.set_deps(RepeatedField::from_vec(
+            workspace.dependencies.into_iter().map(build_cargo_workspace_dependency).collect(),
+        ));
+    };
 
     Ok(response)
 }
@@ -161,6 +217,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         }
                         Request_oneof_kind::cargo_toml(request) => {
                             Box::new(handle_cargo_toml_request(request)?)
+                        }
+                        Request_oneof_kind::cargo_workspace(request) => {
+                            Box::new(handle_cargo_workspace_request(request)?)
                         }
                     };
 

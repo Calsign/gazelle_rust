@@ -35,6 +35,10 @@ var (
 	// Path to Cargo.lock.
 	cargoLockfileDirective string = "rust_cargo_lockfile"
 
+	// Path to the workspace manifest Cargo.toml, when we operate in the
+	// "generate_from_cargo" mode.
+	cargoWorkspaceDirective string = "rust_cargo_workspace"
+
 	// Label prefix for external crates, e.g. @crates//:
 	cratesPrefixDirective string = "rust_crates_prefix"
 
@@ -42,15 +46,24 @@ var (
 	// usage: # gazelle:rust_override_proc_macro <crate name> <true|false>
 	procMacroOverrideDirective string = "rust_override_proc_macro"
 
+	// Indicate that multiple versions of a crate are used in the project,
+	// therefore their labels have to include a correct version suffix. This
+	// directive is only respected when we operate in the
+	// "generate_from_cargo" mode.
+	// usage: # gazelle:rust_multiversion_crate <crate name>
+	multiVersionCrateDirective string = "rust_multiversion_crate"
+
 	// Remove an external crate from the "unused crates" warning.
 	allowUnusedCrateDirective string = "rust_allow_unused_crate"
 )
 
 type rustConfig struct {
 	Mode               string
+	WorkspaceManifest  *WorkspaceManifest
 	LockfileCrates     *LockfileCrates
 	CratesPrefix       string
 	ProcMacroOverrides map[string]bool
+	MultiVersionCrates map[string]bool
 	KindMapInverse     map[string]string
 }
 
@@ -141,7 +154,8 @@ func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 
 func (*rustLang) KnownDirectives() []string {
 	return []string{modeDirective, lockfileDirective, cargoLockfileDirective,
-		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective}
+		cargoWorkspaceDirective, cratesPrefixDirective, procMacroOverrideDirective,
+		multiVersionCrateDirective, allowUnusedCrateDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
@@ -154,9 +168,11 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 	if _, ok := c.Exts[l.Name()]; !ok {
 		cfg = &rustConfig{
 			Mode:               modePureBazel,
+			WorkspaceManifest:  nil,
 			LockfileCrates:     EmptyLockfileCrates(),
 			CratesPrefix:       "",
 			ProcMacroOverrides: make(map[string]bool),
+			MultiVersionCrates: make(map[string]bool),
 			KindMapInverse:     make(map[string]string),
 		}
 	} else {
@@ -200,6 +216,9 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 				addCrateSet(directive, false)
 			} else if directive.Key == cargoLockfileDirective {
 				addCrateSet(directive, true)
+			} else if directive.Key == cargoWorkspaceDirective {
+				workspacePath := path.Join(c.RepoRoot, rel, directive.Value)
+				cfg.WorkspaceManifest = l.NewWorkspaceManifest(c, workspacePath)
 			} else if directive.Key == cratesPrefixDirective {
 				cfg.CratesPrefix = directive.Value
 			} else if directive.Key == procMacroOverrideDirective {
@@ -214,6 +233,8 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 						procMacroOverrideDirective, procMacroOverrideDirective)
 				}
 				cfg.ProcMacroOverrides[split[0]] = val
+			} else if directive.Key == multiVersionCrateDirective {
+				cfg.MultiVersionCrates[directive.Value] = true
 			}
 		}
 	}
