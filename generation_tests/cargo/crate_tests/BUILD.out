@@ -5,7 +5,7 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 rust_library(
     name = "all_kinds_lib",
     srcs = ["src/lib.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     crate_name = "all_kinds",
     visibility = ["//visibility:public"],
 )
@@ -13,21 +13,21 @@ rust_library(
 rust_binary(
     name = "all_kinds",
     srcs = ["src/main.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
 )
 
 rust_test(
     name = "some_integration_test",
     srcs = ["tests/some_integration_test.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
 )
 
 rust_binary(
     name = "large_input",
     srcs = ["benches/large_input.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     tags = ["bench"],
     visibility = ["//visibility:public"],
 )
@@ -35,31 +35,31 @@ rust_binary(
 rust_binary(
     name = "simple",
     srcs = ["examples/simple.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     tags = ["example"],
     visibility = ["//visibility:public"],
 )
 
 rust_test(
     name = "all_kinds_lib_test",
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     crate = ":all_kinds_lib",
 )
 
 rust_test(
     name = "all_kinds_test",
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     crate = ":all_kinds",
 )
 
 rust_test(
     name = "large_input_test",
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     crate = ":large_input",
 )
 
 rust_test(
     name = "simple_test",
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     crate = ":simple",
 )
