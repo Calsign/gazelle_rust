@@ -155,17 +155,6 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 		return nil, true
 	} else if override, ok := resolve.FindRuleWithOverride(c, spec, l.Name()); ok {
 		return &override, true
-	} else if crateName, ok := cfg.LockfileCrates.Crates[spec]; ok {
-		var err error
-		label, err := label.Parse(cfg.CratesPrefix + crateName)
-		if err != nil {
-			l.Log(c, logFatal, from, "bad %s: %v\n", cratesPrefixDirective, err)
-		}
-
-		// track this crate as used
-		cfg.LockfileCrates.UsedCrates[crateName] = true
-
-		return &label, true
 	} else if candidates := ix.FindRulesByImportWithConfig(c, spec, l.Name()); len(candidates) >= 1 {
 		if len(candidates) == 1 {
 			return &candidates[0].Label, true
@@ -177,6 +166,17 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 			l.Log(c, logErr, from, "multiple matches found for %s: [%s]\n", spec.Imp, strings.Join(candidateLabels, ", "))
 			return nil, true
 		}
+	} else if crateName, ok := cfg.LockfileCrates.Crates[spec]; ok {
+		var err error
+		label, err := label.Parse(cfg.CratesPrefix + crateName)
+		if err != nil {
+			l.Log(c, logFatal, from, "bad %s: %v\n", cratesPrefixDirective, err)
+		}
+
+		// track this crate as used
+		cfg.LockfileCrates.UsedCrates[crateName] = true
+
+		return &label, true
 	} else if override, ok := Provided[lang][spec.Imp]; ok {
 		return &override, true
 	} else {
