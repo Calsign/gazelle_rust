@@ -3,7 +3,7 @@ load("@rules_rust//rust:defs.bzl", "rust_library")
 rust_library(
     name = "nested_package",
     srcs = ["src/lib.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
     deps = [
         "//a:a_lib",

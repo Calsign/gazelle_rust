@@ -38,6 +38,8 @@ func (l *rustLang) inferRuleKind(filename string, dirname *string,
 		return "rust_binary"
 	} else if filename == "lib.rs" {
 		return "rust_library"
+	} else if filename == "build.rs" {
+		return "cargo_build_script"
 	} else if response.Hints.HasTest && (l.isTestDir(dirname) || l.isTestFilename(filename)) {
 		// assume that sources with tests in a test/tests directory are integration tests
 		// assume that sources with tests with test-like names are integration tests
@@ -52,6 +54,8 @@ type RuleData struct {
 	responses []*pb.RustImportsResponse
 	// if a test crate referring to another crate, that crate; otherwise, nil
 	testedCrate *rule.Rule
+	// whether this crate has a build script
+	dependsOnBuildScript bool
 }
 
 func getTestCrate(rule *rule.Rule, repo string, pkg string) string {
@@ -306,6 +310,8 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 					l.generateCargoRule(args.Config, &args, example, "rust_binary", "", []string{"example"}, &result)
 				}
 			}
+		} else if file == "build.rs" {
+			l.generateBuildScript(args.Config, &args, &result)
 		}
 	}
 
@@ -334,7 +340,7 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 
 				testRule := rule.NewRule("rust_test", *testRuleName)
 				testRule.SetAttr("crate", ":"+ruleData.rule.Name())
-				testRule.SetAttr("compile_data", []string{":Cargo.toml"})
+				testRule.SetAttr("compile_data", []string{"Cargo.toml"})
 
 				result.Gen = append(result.Gen, testRule)
 				result.Imports = append(result.Imports, RuleData{
@@ -370,7 +376,11 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 	// traverse all files we know about to determine the full module structure
 	importsResponses := map[string]*pb.RustImportsResponse{}
 	for _, src := range crateInfo.Srcs {
-		l.discoverModule(c, src, args, &importsResponses, true)
+		// It is possible for declared files to be absent if they are
+		// supposed to be produced by the build script of the crate.
+		if fileExists(src, args) {
+			l.discoverModule(c, src, args, &importsResponses, true)
+		}
 	}
 
 	srcs := []string{}
@@ -384,9 +394,12 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 	}
 
 	newRule := rule.NewRule(kind, targetName)
-	newRule.SetAttr("srcs", srcs)
+
+	if len(srcs) > 0 {
+		newRule.SetAttr("srcs", srcs)
+	}
 	newRule.SetAttr("visibility", []string{"//visibility:public"})
-	newRule.SetAttr("compile_data", []string{":Cargo.toml"})
+	newRule.SetAttr("compile_data", []string{"Cargo.toml"})
 
 	if targetName != crateName {
 		newRule.SetAttr("crate_name", crateName)
@@ -399,6 +412,45 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 	if crateRoot != nil && len(srcs) > 1 {
 		newRule.SetAttr("crate_root", *crateRoot)
 	}
+
+	dependsOnBuildScript := false
+	if kind == "rust_library" || kind == "rust_binary" {
+		for _, src := range args.RegularFiles {
+			if src == "build.rs" {
+				dependsOnBuildScript = true
+			}
+		}
+	}
+
+	result.Gen = append(result.Gen, newRule)
+	result.Imports = append(result.Imports, RuleData{
+		rule:                 newRule,
+		responses:            responses,
+		testedCrate:          nil,
+		dependsOnBuildScript: dependsOnBuildScript,
+	})
+}
+
+func (l *rustLang) generateBuildScript(c *config.Config, args *language.GenerateArgs,
+	result *language.GenerateResult) {
+	importsResponses := map[string]*pb.RustImportsResponse{}
+	l.discoverModule(c, "build.rs", args, &importsResponses, true)
+
+	srcs := []string{}
+	responses := []*pb.RustImportsResponse{}
+
+	for src, response := range importsResponses {
+		srcs = append(srcs, src)
+		if response != nil {
+			responses = append(responses, response)
+		}
+	}
+
+	newRule := rule.NewRule("cargo_build_script", "build_script")
+	newRule.SetAttr("srcs", srcs)
+	newRule.SetAttr("visibility", []string{"//visibility:public"})
+	newRule.SetAttr("compile_data", []string{"Cargo.toml"})
+	newRule.SetAttr("crate_root", "build.rs")
 
 	result.Gen = append(result.Gen, newRule)
 	result.Imports = append(result.Imports, RuleData{

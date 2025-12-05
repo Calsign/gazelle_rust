@@ -5,7 +5,7 @@ load("@rules_rust//rust:defs.bzl", "rust_library")
 rust_library(
     name = "cargo_b",
     srcs = ["src/lib.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
     deps = ["//cargo_a"],
 )

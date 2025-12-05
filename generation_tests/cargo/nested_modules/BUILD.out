@@ -17,6 +17,6 @@ rust_library(
         "src/c/mod.rs",
         "src/lib.rs",
     ],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
 )

@@ -8,7 +8,7 @@ rust_library(
         "src/foobar.rs",
         "src/lib.rs",
     ],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     crate_name = "basic",
     visibility = ["//visibility:public"],
 )
@@ -16,7 +16,7 @@ rust_library(
 rust_binary(
     name = "basic",
     srcs = ["src/main.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
     deps = [":basic_lib"],
 )

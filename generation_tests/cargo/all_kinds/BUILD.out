@@ -5,7 +5,7 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 rust_library(
     name = "all_kinds_lib",
     srcs = ["src/lib.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     crate_name = "all_kinds",
     visibility = ["//visibility:public"],
 )
@@ -13,14 +13,14 @@ rust_library(
 rust_binary(
     name = "all_kinds",
     srcs = ["src/main.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
 )
 
 rust_binary(
     name = "another_executable",
     srcs = ["src/bin/another_executable.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
 )
 
@@ -30,14 +30,14 @@ rust_binary(
         "src/bin/multi_file_executable/main.rs",
         "src/bin/multi_file_executable/some_module.rs",
     ],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
 )
 
 rust_binary(
     name = "named_executable",
     srcs = ["src/bin/named_executable.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
 )
 
@@ -47,21 +47,21 @@ rust_test(
         "tests/multi_file_test/main.rs",
         "tests/multi_file_test/test_module.rs",
     ],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
 )
 
 rust_test(
     name = "some_integration_test",
     srcs = ["tests/some_integration_test.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
 )
 
 rust_binary(
     name = "large_input",
     srcs = ["benches/large_input.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     tags = ["bench"],
     visibility = ["//visibility:public"],
 )
@@ -72,7 +72,7 @@ rust_binary(
         "benches/multi_file_bench/bench_module.rs",
         "benches/multi_file_bench/main.rs",
     ],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     tags = ["bench"],
     visibility = ["//visibility:public"],
 )
@@ -83,7 +83,7 @@ rust_binary(
         "examples/multi_file_example/ex_module.rs",
         "examples/multi_file_example/main.rs",
     ],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     tags = ["example"],
     visibility = ["//visibility:public"],
 )
@@ -91,7 +91,7 @@ rust_binary(
 rust_binary(
     name = "simple",
     srcs = ["examples/simple.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     tags = ["example"],
     visibility = ["//visibility:public"],
 )
