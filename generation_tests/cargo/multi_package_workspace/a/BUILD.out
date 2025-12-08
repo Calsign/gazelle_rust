@@ -3,7 +3,7 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
 rust_library(
     name = "a_lib",
     srcs = ["src/lib.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     crate_name = "a",
     visibility = ["//visibility:public"],
 )
@@ -11,7 +11,7 @@ rust_library(
 rust_binary(
     name = "a",
     srcs = ["src/main.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
     deps = [":a_lib"],
 )

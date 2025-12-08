@@ -1,0 +1,19 @@
+load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+# gazelle:rust_mode generate_from_cargo
+
+rust_library(
+    name = "example",
+    compile_data = ["Cargo.toml"],
+    visibility = ["//visibility:public"],
+    deps = [":build_script"],
+)
+
+cargo_build_script(
+    name = "build_script",
+    srcs = ["build.rs"],
+    compile_data = ["Cargo.toml"],
+    crate_root = "build.rs",
+    visibility = ["//visibility:public"],
+)

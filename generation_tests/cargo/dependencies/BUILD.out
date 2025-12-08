@@ -5,7 +5,7 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 rust_library(
     name = "dependencies_lib",
     srcs = ["src/lib.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     crate_name = "dependencies",
     visibility = ["//visibility:public"],
 )
@@ -13,7 +13,7 @@ rust_library(
 rust_binary(
     name = "dependencies",
     srcs = ["src/main.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
     deps = [":dependencies_lib"],
 )
@@ -21,7 +21,7 @@ rust_binary(
 rust_test(
     name = "integration_test",
     srcs = ["tests/integration_test.rs"],
-    compile_data = [":Cargo.toml"],
+    compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
     deps = [":dependencies_lib"],
 )

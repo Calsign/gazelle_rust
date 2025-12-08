@@ -61,7 +61,7 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 
 	cfg := l.GetConfig(c)
 
-	if SliceContains(commonDefs, r.Kind()) {
+	if SliceContains(resolvableDefs, r.Kind()) {
 		ruleData := ruleData.(RuleData)
 		deps := map[label.Label]bool{}
 		procMacroDeps := map[label.Label]bool{}
@@ -129,6 +129,10 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 					l.Log(c, logErr, from, "no match for %s\n", imp)
 				}
 			}
+		}
+
+		if ruleData.buildScript != nil {
+			deps[*ruleData.buildScript] = true
 		}
 
 		maybeSetAttrStrings(r, "deps", finalizeDeps(deps, from))
