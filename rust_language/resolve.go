@@ -100,12 +100,12 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 
 				is_proc_macro := false
 
-				label, found := l.resolveCrate(cfg, c, ix, l.Name(), imp, from)
+				label, found := l.resolveCrate(cfg, c, ix, l.Name(), imp, ruleData.parentCrateName, from)
 				if label != nil {
 					is_proc_macro = false
 				}
 				if !found {
-					label, found = l.resolveCrate(cfg, c, ix, procMacroLangName, imp, from)
+					label, found = l.resolveCrate(cfg, c, ix, procMacroLangName, imp, ruleData.parentCrateName, from)
 					if label != nil {
 						is_proc_macro = true
 					}
@@ -148,8 +148,24 @@ func maybeSetAttrStrings(r *rule.Rule, attr string, val []string) {
 	}
 }
 
+func (l *rustLang) resolveCrateVersion(cfg *rustConfig, c *config.Config,
+	parentCrateName string, crateToResolve string, from label.Label) string {
+	if parentCrateName == "" {
+		l.Log(c, logFatal, from, "unable to infer the parent crate name while resolving the version of %s", crateToResolve)
+	}
+
+	var dependencyVersions map[string]string = cfg.LockfileCrates.DependenciesPerCrate[parentCrateName]
+
+	version, ok := dependencyVersions[crateToResolve]
+	if !ok {
+		l.Log(c, logFatal, from, "failed to resolve the version of %s based on the Cargo lockfile", crateToResolve)
+	}
+
+	return version
+}
+
 func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.RuleIndex,
-	lang string, imp string, from label.Label) (*label.Label, bool) {
+	lang string, imp string, parentCrateName string, from label.Label) (*label.Label, bool) {
 	spec := resolve.ImportSpec{
 		Lang: lang,
 		Imp:  imp,
@@ -170,17 +186,24 @@ func (l *rustLang) resolveCrate(cfg *rustConfig, c *config.Config, ix *resolve.R
 			l.Log(c, logErr, from, "multiple matches found for %s: [%s]\n", spec.Imp, strings.Join(candidateLabels, ", "))
 			return nil, true
 		}
-	} else if crateName, ok := cfg.LockfileCrates.Crates[spec]; ok {
+	} else if crate, ok := cfg.LockfileCrates.Crates[spec]; ok {
+		var crateLabel label.Label
 		var err error
-		label, err := label.Parse(cfg.CratesPrefix + crateName)
+		if cfg.LockfileCrates.Multiversion[crate] {
+			version := l.resolveCrateVersion(cfg, c, parentCrateName, crate, from)
+			crateLabel, err = label.Parse(cfg.CratesPrefix + crate + "-" + version)
+		} else {
+			crateLabel, err = label.Parse(cfg.CratesPrefix + crate)
+		}
+
 		if err != nil {
 			l.Log(c, logFatal, from, "bad %s: %v\n", cratesPrefixDirective, err)
 		}
 
 		// track this crate as used
-		cfg.LockfileCrates.UsedCrates[crateName] = true
+		cfg.LockfileCrates.UsedCrates[crate] = true
 
-		return &label, true
+		return &crateLabel, true
 	} else if override, ok := Provided[lang][spec.Imp]; ok {
 		return &override, true
 	} else {

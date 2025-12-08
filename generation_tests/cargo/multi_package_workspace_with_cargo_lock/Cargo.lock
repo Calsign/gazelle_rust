@@ -5,12 +5,16 @@ version = 4
 [[package]]
 name = "a"
 version = "0.1.0"
+dependencies = [
+ "strum 0.24.1",
+]
 
 [[package]]
 name = "b"
 version = "0.1.0"
 dependencies = [
  "a",
+ "strum 0.27.2",
 ]
 
 [[package]]
@@ -20,3 +24,15 @@ dependencies = [
  "a",
  "b",
 ]
+
+[[package]]
+name = "strum"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
+
+[[package]]
+name = "strum"
+version = "0.27.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"

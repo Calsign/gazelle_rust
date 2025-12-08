@@ -92,6 +92,9 @@ fn handle_cargo_toml_request(
 
     let mut response = CargoTomlResponse::default();
     response.set_success(true);
+    if let Some(package) = manifest.package {
+        response.name = package.name;
+    }
 
     if let Some(lib) = manifest.lib {
         response.set_library(build_crate_info(lib));

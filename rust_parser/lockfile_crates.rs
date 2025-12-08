@@ -4,7 +4,7 @@ use std::error::Error;
 use std::path::PathBuf;
 
 use cargo_bazel::api::lockfile::CargoBazelLockfile;
-use messages_rust_proto::Package;
+use messages_rust_proto::{Package, PackageDependency};
 
 pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>, Box<dyn Error>> {
     let context = match cargo_bazel::api::lockfile::parse(&lockfile_path) {
@@ -29,6 +29,7 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
             package.set_name(crate_.name().to_string());
             package.set_crate_name(library_target_name.to_string());
             package.set_proc_macro(is_proc_macro);
+            package.set_version(crate_.version().to_string());
 
             crates.push(package);
         }
@@ -69,6 +70,14 @@ pub fn is_proc_macro_dep(name: &str) -> bool {
     name == "proc-macro" || name == "proc-macro2"
 }
 
+pub fn make_package_dependency(dep: &cargo_lock::Dependency) -> PackageDependency {
+    PackageDependency {
+        name: dep.name.as_str().to_string(),
+        version: dep.version.to_string(),
+        ..Default::default()
+    }
+}
+
 pub fn get_cargo_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>, Box<dyn Error>> {
     let lockfile = match cargo_lock::Lockfile::load(&lockfile_path) {
         Err(err) => {
@@ -93,6 +102,14 @@ pub fn get_cargo_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
                 .dependencies
                 .iter()
                 .any(|dep| is_proc_macro_dep(dep.name.as_str()));
+            package.version = pkg.version.to_string();
+            package.workspace_member = pkg.source.is_none();
+            package.dependencies = pkg
+                .dependencies
+                .into_iter()
+                .map(|dep| make_package_dependency(&dep))
+                .collect();
+
             crates.push(package);
         }
     }

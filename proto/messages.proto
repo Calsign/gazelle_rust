@@ -41,10 +41,18 @@ message LockfileCratesRequest {
     }
 }
 
+message PackageDependency {
+    string name = 1;
+    string version = 2;
+}
+
 message Package {
     string name = 1;
     string crate_name = 2;
     bool proc_macro = 3;
+    string version = 4;
+    bool workspace_member = 5;
+    repeated PackageDependency dependencies = 6;
 }
 
 message LockfileCratesResponse {
@@ -62,11 +70,12 @@ message CargoCrateInfo {
 }
 
 message CargoTomlResponse {
-    CargoCrateInfo library = 1;
-    repeated CargoCrateInfo binaries = 2;
-    repeated CargoCrateInfo tests = 3;
-    repeated CargoCrateInfo benches = 4;
-    repeated CargoCrateInfo examples = 5;
-    bool success = 6;
-    string error_msg = 7;
+    string name = 1;
+    CargoCrateInfo library = 2;
+    repeated CargoCrateInfo binaries = 3;
+    repeated CargoCrateInfo tests = 4;
+    repeated CargoCrateInfo benches = 5;
+    repeated CargoCrateInfo examples = 6;
+    bool success = 7;
+    string error_msg = 8;
 }
