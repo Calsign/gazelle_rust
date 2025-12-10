@@ -76,7 +76,8 @@ fn build_crate_info(product: cargo_toml::Product) -> CargoCrateInfo {
         crate_info.set_name(name);
     }
     if let Some(path) = product.path {
-        crate_info.set_srcs(RepeatedField::from_vec(vec![path]));
+        let normalized_path = path.strip_prefix("./").unwrap_or(&path).to_string();
+        crate_info.set_srcs(RepeatedField::from_vec(vec![normalized_path]));
     }
     crate_info.proc_macro = product.proc_macro;
 
