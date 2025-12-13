@@ -23,7 +23,10 @@ enum Args {
 fn handle_rust_imports_request(
     request: RustImportsRequest,
 ) -> Result<RustImportsResponse, Box<dyn Error>> {
-    let rust_imports = parser::parse_imports(PathBuf::from(request.file_path));
+    let rust_imports = parser::parse_imports(
+        PathBuf::from(request.file_path),
+        &request.enabled_features.into_vec(),
+    );
 
     let mut response = RustImportsResponse::default();
     match rust_imports {
@@ -92,8 +95,25 @@ fn handle_cargo_toml_request(
 
     let mut response = CargoTomlResponse::default();
     response.set_success(true);
-    if let Some(package) = manifest.package {
-        response.name = package.name;
+
+    if let Some(ref package) = manifest.package {
+        response.name = package.name.clone();
+        let feature_resolver = cargo_toml::features::Resolver::new();
+        let features_hmap = feature_resolver.parse(&manifest).features;
+        let default_features_set = features_hmap
+            .get("default")
+            .map(|f| f.enables_features.clone())
+            .unwrap_or_default();
+        let default_features: Vec<String> =
+            default_features_set.iter().map(|x| x.to_string()).collect();
+        let non_default_features: Vec<String> = features_hmap
+            .values()
+            .map(|feature| feature.key)
+            .filter(|k| !default_features_set.contains(k))
+            .map(|x| x.to_string())
+            .collect();
+        response.set_default_features(RepeatedField::from_vec(default_features));
+        response.set_non_default_features(RepeatedField::from_vec(non_default_features));
     }
 
     if let Some(lib) = manifest.lib {
@@ -120,7 +140,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match args {
         Args::OneShot { path } => {
-            let mut rust_imports = parser::parse_imports(path)?;
+            let mut rust_imports = parser::parse_imports(path, &Vec::new())?;
             rust_imports.imports.sort();
 
             println!("Imports:");

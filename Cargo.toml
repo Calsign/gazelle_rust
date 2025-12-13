@@ -9,7 +9,7 @@ path = "rust_parser/main.hs"
 
 [dependencies]
 cargo-lock = "11.0.0"
-cargo_toml = "0.22.3"
+cargo_toml = { version = "0.22.3", features = ["features"]}
 syn = { version = "2", features = ["full", "visit", "extra-traits"]}
 clap = { version = "4", features = ["derive"]}
 lazy_static = "1.5.0"

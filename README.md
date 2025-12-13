@@ -92,6 +92,37 @@ following directive:
 # gazelle:rust_mode generate_from_cargo
 ```
 
+In this mode only, it is possible to control what features will be added to the `crate_features`
+attribute of generated targets with these directives:
+
+```py
+# gazelle:rust_feature <feature_name> <true|false>
+# gazelle:rust_default_features <true|false>
+```
+
+The first directive allows us to tweak individual features, while the second one controls whether to
+respect the default features—this is analogous to the `default_features = <true|false>` option in
+Cargo dependency declarations. The default value of `gazelle:rust_default_features` is `true`,
+similar to Cargo, whereas all non-default features start out disabled.
+
+The user can exercise precise control over the enabled features by placing these directives at the
+root of the directory tree where they should take effect. For example, repository-wide defaults can
+be added to the topmost `BUILD.bazel` file, while crate-specific overrides can be placed in
+`BUILD.bazel` files deeper in the directory tree. Only features that are actually defined in a
+particular crate will be added to its corresponding Bazel targets. For example, if you have the
+following directive
+
+```py
+# gazelle:rust_feature foo true
+```
+
+at the root of your project, only crates that define `foo` feature will have it in `crate_features`
+of their corresponding Bazel targets.
+
+Apart from influencing the value of the `crate_features` attribute, these settings also control
+dependency resolution. Imports that are guarded with disabled features will not result in addition
+of their corresponding targets to the list of dependencies.
+
 ## Assigning dependencies
 
 gazelle\_rust parses each source file and identifies any path that looks like an external crate
