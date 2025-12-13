@@ -81,6 +81,17 @@ adding a file to `srcs` for an existing target, and gazelle will respect that ex
 gazelle\_rust does not currently support sources in subdirectories, and will always place targets
 into build files adjacent to the sources that they correspond to.
 
+## Generation from Cargo.toml files
+
+It is possible to instruct gazelle\_rust to generate `BUILD.bazel` files next to existing
+`Cargo.toml` files, which may be helpful if you would like to keep `Cargo.toml` files around and
+structure your Bazel definitions around them. This mode of operation is enabled by adding the
+following directive:
+
+```py
+# gazelle:rust_mode generate_from_cargo
+```
+
 ## Assigning dependencies
 
 gazelle\_rust parses each source file and identifies any path that looks like an external crate

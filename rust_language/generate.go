@@ -54,6 +54,8 @@ type RuleData struct {
 	testedCrate *rule.Rule
 	// the build script of this crate, if any
 	buildScript *label.Label
+	// name of the parent crate
+	parentCrateName string
 }
 
 func getTestCrate(rule *rule.Rule, repo string, pkg string) string {
@@ -275,6 +277,7 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 	result := language.GenerateResult{}
 
 	hasBuildScript := false
+	parentCrateName := ""
 	for _, src := range args.RegularFiles {
 		if src == "build.rs" {
 			hasBuildScript = true
@@ -284,6 +287,7 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 	for _, file := range args.RegularFiles {
 		if file == "Cargo.toml" {
 			if response := l.parseCargoToml(args.Config, file, &args); response != nil {
+				parentCrateName = response.Name
 				if response.Library != nil {
 					// if there is a main.rs next to lib.rs, they will both have the same crate
 					// name; need to give the library a different name
@@ -300,24 +304,26 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 						kind = "rust_proc_macro"
 					}
 
-					l.generateCargoRule(args.Config, &args, response.Library, kind, suffix, []string{}, hasBuildScript, &result)
+					l.generateCargoRule(args.Config, &args, response.Library, kind, suffix, []string{}, hasBuildScript, parentCrateName, &result)
 				}
 				for _, binary := range response.Binaries {
-					l.generateCargoRule(args.Config, &args, binary, "rust_binary", "", []string{}, hasBuildScript, &result)
+					l.generateCargoRule(args.Config, &args, binary, "rust_binary", "", []string{}, hasBuildScript, parentCrateName, &result)
 				}
 				for _, test := range response.Tests {
-					l.generateCargoRule(args.Config, &args, test, "rust_test", "", []string{}, hasBuildScript, &result)
+					l.generateCargoRule(args.Config, &args, test, "rust_test", "", []string{}, hasBuildScript, parentCrateName, &result)
 				}
 				for _, bench := range response.Benches {
-					l.generateCargoRule(args.Config, &args, bench, "rust_binary", "", []string{"bench"}, hasBuildScript, &result)
+					l.generateCargoRule(args.Config, &args, bench, "rust_binary", "", []string{"bench"}, hasBuildScript, parentCrateName, &result)
 				}
 				for _, example := range response.Examples {
-					l.generateCargoRule(args.Config, &args, example, "rust_binary", "", []string{"example"}, hasBuildScript, &result)
+					l.generateCargoRule(args.Config, &args, example, "rust_binary", "", []string{"example"}, hasBuildScript, parentCrateName, &result)
 				}
 			}
-		} else if file == "build.rs" {
-			l.generateBuildScript(args.Config, &args, &result)
 		}
+	}
+
+	if hasBuildScript {
+		l.generateBuildScript(args.Config, &args, parentCrateName, &result)
 	}
 
 	existingRuleNames := make(map[string]bool)
@@ -349,9 +355,10 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 
 				result.Gen = append(result.Gen, testRule)
 				result.Imports = append(result.Imports, RuleData{
-					rule:        testRule,
-					responses:   ruleData.responses,
-					testedCrate: ruleData.rule,
+					rule:            testRule,
+					responses:       ruleData.responses,
+					testedCrate:     ruleData.rule,
+					parentCrateName: parentCrateName,
 				})
 			}
 		}
@@ -362,7 +369,7 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 
 func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateArgs,
 	crateInfo *pb.CargoCrateInfo, kind string, suffix string, tags []string,
-	hasBuildScript bool, result *language.GenerateResult) {
+	hasBuildScript bool, parentCrateName string, result *language.GenerateResult) {
 
 	targetName := crateInfo.Name + suffix
 	crateName := crateInfo.Name
@@ -429,15 +436,16 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 
 	result.Gen = append(result.Gen, newRule)
 	result.Imports = append(result.Imports, RuleData{
-		rule:        newRule,
-		responses:   responses,
-		testedCrate: nil,
-		buildScript: buildScript,
+		rule:            newRule,
+		responses:       responses,
+		testedCrate:     nil,
+		buildScript:     buildScript,
+		parentCrateName: parentCrateName,
 	})
 }
 
 func (l *rustLang) generateBuildScript(c *config.Config, args *language.GenerateArgs,
-	result *language.GenerateResult) {
+	crateName string, result *language.GenerateResult) {
 	importsResponses := map[string]*pb.RustImportsResponse{}
 	l.discoverModule(c, "build.rs", args, &importsResponses, true)
 
@@ -459,9 +467,10 @@ func (l *rustLang) generateBuildScript(c *config.Config, args *language.Generate
 
 	result.Gen = append(result.Gen, newRule)
 	result.Imports = append(result.Imports, RuleData{
-		rule:        newRule,
-		responses:   responses,
-		testedCrate: nil,
+		rule:            newRule,
+		responses:       responses,
+		testedCrate:     nil,
+		parentCrateName: crateName,
 	})
 }
 

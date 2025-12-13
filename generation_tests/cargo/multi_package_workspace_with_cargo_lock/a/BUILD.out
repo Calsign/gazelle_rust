@@ -6,6 +6,7 @@ rust_library(
     compile_data = ["Cargo.toml"],
     crate_name = "a",
     visibility = ["//visibility:public"],
+    deps = ["@crates//:strum-0.24.1"],
 )
 
 rust_binary(

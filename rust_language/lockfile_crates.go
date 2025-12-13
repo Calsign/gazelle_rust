@@ -15,15 +15,22 @@ var procMacroOverrides map[string]bool = map[string]bool{
 }
 
 type LockfileCrates struct {
+	// map from imports to package names
 	Crates map[resolve.ImportSpec]string
+	// map from package names to whether they are multiversion dependencies
+	Multiversion map[string]bool
+	// dependencies per crate, the inner map is names to versions
+	DependenciesPerCrate map[string](map[string]string)
 	// track which crates have been used so that we can report unused crates
 	UsedCrates map[string]bool
 }
 
 func EmptyLockfileCrates() *LockfileCrates {
 	return &LockfileCrates{
-		Crates:     make(map[resolve.ImportSpec]string),
-		UsedCrates: make(map[string]bool),
+		Crates:               make(map[resolve.ImportSpec]string),
+		Multiversion:         make(map[string]bool),
+		DependenciesPerCrate: make(map[string](map[string]string)),
+		UsedCrates:           make(map[string]bool),
 	}
 }
 
@@ -50,6 +57,8 @@ func (l *rustLang) NewLockfileCrates(c *config.Config, lockfilePath string, carg
 		l.Log(c, logFatal, lockfilePath, "failed to parse lockfile crates: %v", err)
 	}
 
+	var requestedVersions = make(map[string](map[string]bool))
+
 	for _, crate := range response.Crates {
 		is_proc_macro := crate.ProcMacro
 		if proc_macro, ok := procMacroOverrides[crate.CrateName]; ok {
@@ -70,6 +79,22 @@ func (l *rustLang) NewLockfileCrates(c *config.Config, lockfilePath string, carg
 			Imp:  crate.CrateName,
 		}
 		lockfileCrates.Crates[spec] = crate.Name
+
+		if crate.WorkspaceMember {
+			var dependencies = make(map[string]string)
+			for _, dep := range crate.Dependencies {
+				dependencies[dep.Name] = dep.Version
+				if _, ok := requestedVersions[dep.Name]; !ok {
+					requestedVersions[dep.Name] = make(map[string]bool)
+				}
+				requestedVersions[dep.Name][dep.Version] = true
+			}
+			lockfileCrates.DependenciesPerCrate[crate.Name] = dependencies
+		}
+	}
+
+	for crate, versions := range requestedVersions {
+		lockfileCrates.Multiversion[crate] = len(versions) > 1
 	}
 
 	return lockfileCrates

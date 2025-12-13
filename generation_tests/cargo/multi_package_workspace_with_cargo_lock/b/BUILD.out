@@ -5,5 +5,8 @@ rust_library(
     srcs = ["src/lib.rs"],
     compile_data = ["Cargo.toml"],
     visibility = ["//visibility:public"],
-    deps = ["//a:a_lib"],
+    deps = [
+        "//a:a_lib",
+        "@crates//:strum-0.27.2",
+    ],
 )
