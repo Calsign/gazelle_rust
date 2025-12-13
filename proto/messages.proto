@@ -10,6 +10,7 @@ message Request {
 
 message RustImportsRequest {
     string file_path = 1;
+    repeated string enabled_features = 2;
 }
 
 /** Extra information about the source file, used to infer rule kind (e.g. binary vs. library) when
@@ -76,6 +77,8 @@ message CargoTomlResponse {
     repeated CargoCrateInfo tests = 4;
     repeated CargoCrateInfo benches = 5;
     repeated CargoCrateInfo examples = 6;
-    bool success = 7;
-    string error_msg = 8;
+    repeated string default_features = 7;
+    repeated string non_default_features = 8;
+    bool success = 9;
+    string error_msg = 10;
 }

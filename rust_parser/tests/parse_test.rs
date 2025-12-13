@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 struct TestCase {
     filename: &'static str,
+    enabled_features: Vec<&'static str>,
     expected_imports: Vec<&'static str>,
     expected_test_imports: Vec<&'static str>,
     expected_extern_mods: Vec<&'static str>,
@@ -15,6 +16,7 @@ lazy_static::lazy_static! {
     static ref TEST_CASES: Vec<TestCase> = vec![
         TestCase {
             filename: "simple.rs",
+            enabled_features: vec![],
             expected_imports: vec![
                 "gazelle",
                 "test_extern_crate_1",
@@ -45,11 +47,10 @@ lazy_static::lazy_static! {
         },
         TestCase {
             filename: "test_only.rs",
+            enabled_features: vec![],
             expected_imports: vec![
                 "a",
                 "x",
-                "m",
-                "n",
             ],
             expected_test_imports: vec![
                 "b",
@@ -62,9 +63,25 @@ lazy_static::lazy_static! {
         },
         TestCase {
             filename: "early_mod.rs",
+            enabled_features: vec![],
             expected_imports: vec!["ee"],
             expected_test_imports: vec![],
             expected_extern_mods: vec![],
+        },
+        TestCase {
+            filename: "features.rs",
+            enabled_features: vec!["bar"],
+            expected_imports: vec![
+                "bar",
+                "baz",
+                "qux",
+                "test_extern_crate_2",
+                "test_extern_crate_3",
+            ],
+            expected_test_imports: vec![],
+            expected_extern_mods: vec![
+                "extern_mod_2",
+            ],
         },
     ];
 }
@@ -108,8 +125,13 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
     for test_case in &*TEST_CASES {
         let mut file = dir.clone();
         file.push(test_case.filename);
+        let enabled_features: Vec<String> = test_case
+            .enabled_features
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
 
-        let rust_imports = parser::parse_imports(file)?;
+        let rust_imports = parser::parse_imports(file, &enabled_features)?;
         assert_eq_vecs(
             &rust_imports.imports,
             &test_case

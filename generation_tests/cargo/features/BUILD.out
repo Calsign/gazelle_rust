@@ -1,0 +1,26 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
+
+# gazelle:rust_mode generate_from_cargo
+# gazelle:rust_feature foo true
+# gazelle:rust_feature bar true
+
+rust_library(
+    name = "features_lib",
+    srcs = [
+        "src/foobar.rs",
+        "src/lib.rs",
+    ],
+    compile_data = ["Cargo.toml"],
+    crate_features = ["foo"],
+    crate_name = "features",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "features",
+    srcs = ["src/main.rs"],
+    compile_data = ["Cargo.toml"],
+    crate_features = ["foo"],
+    visibility = ["//visibility:public"],
+    deps = [":features_lib"],
+)

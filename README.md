@@ -92,6 +92,27 @@ following directive:
 # gazelle:rust_mode generate_from_cargo
 ```
 
+## Crate features
+
+gazelle\_rust reads the set of features in the `crate_features` attribute and skips adding
+dependencies which are not needed for the enabled features.
+
+For `generate_from_cargo` mode, the initial `crate_features` list is generated from the default
+features list in `Cargo.toml`. This behavior for newly-generated targets can be further customized
+with the following directives which apply to the package in which they are defined and subpackages:
+
+```py
+# gazelle:rust_default_features <true|false>
+# gazelle:rust_feature <feature_name> <true|false>
+```
+
+`gazelle:rust_default_features false` disables use of the default features from `Cargo.toml`,
+analogous to `default_features = false` in cargo.
+
+`gazelle:rust_feature my_feature <true|false>` adds an override for a specific feature name to add
+or remove that feature from the set of features added to newly-generated targets. The feature will
+only be added to a rust target if that feature is present in `Cargo.toml` for that package.
+
 ## Assigning dependencies
 
 gazelle\_rust parses each source file and identifies any path that looks like an external crate
