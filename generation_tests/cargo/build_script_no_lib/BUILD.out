@@ -7,5 +7,6 @@ cargo_build_script(
     srcs = ["build.rs"],
     compile_data = ["Cargo.toml"],
     crate_root = "build.rs",
+    edition = "2021",
     visibility = ["//visibility:public"],
 )

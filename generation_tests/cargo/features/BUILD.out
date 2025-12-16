@@ -14,6 +14,7 @@ rust_library(
     compile_data = ["Cargo.toml"],
     crate_features = ["foo"],
     crate_name = "features",
+    edition = "2024",
     visibility = ["//visibility:public"],
 )
 
@@ -22,6 +23,7 @@ rust_binary(
     srcs = ["src/main.rs"],
     compile_data = ["Cargo.toml"],
     crate_features = ["foo"],
+    edition = "2024",
     visibility = ["//visibility:public"],
     deps = [":features_lib"],
 )

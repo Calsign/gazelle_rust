@@ -92,6 +92,20 @@ following directive:
 # gazelle:rust_mode generate_from_cargo
 ```
 
+In this mode of operation it is also possible to specify the default Rust edition, like so:
+
+```py
+# gazelle:rust_default_edition 2021
+```
+
+The value this directive is set to should normally match the
+[`default_edition`](https://bazelbuild.github.io/rules_rust/rust_toolchains.html#rust_toolchain-default_edition)
+attribute on the Rust toolchain. Whenever the edition is directly specified in the `Cargo.toml` file
+(i.e. it is not inherited from the workspace file) and it is different from the default edition, the
+corresponding `"edition"` attribute will be added to the generated targets. If
+`gazelle:rust_default_edition` is not set, the `"edition"` attribute will always be added when it is
+specified.
+
 ## Crate features
 
 gazelle\_rust reads the set of features in the `crate_features` attribute and skips adding

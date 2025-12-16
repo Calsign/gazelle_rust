@@ -72,13 +72,14 @@ message CargoCrateInfo {
 
 message CargoTomlResponse {
     string name = 1;
-    CargoCrateInfo library = 2;
-    repeated CargoCrateInfo binaries = 3;
-    repeated CargoCrateInfo tests = 4;
-    repeated CargoCrateInfo benches = 5;
-    repeated CargoCrateInfo examples = 6;
-    repeated string default_features = 7;
-    repeated string non_default_features = 8;
-    bool success = 9;
-    string error_msg = 10;
+    string edition = 2;
+    CargoCrateInfo library = 3;
+    repeated CargoCrateInfo binaries = 4;
+    repeated CargoCrateInfo tests = 5;
+    repeated CargoCrateInfo benches = 6;
+    repeated CargoCrateInfo examples = 7;
+    repeated string default_features = 8;
+    repeated string non_default_features = 9;
+    bool success = 10;
+    string error_msg = 11;
 }

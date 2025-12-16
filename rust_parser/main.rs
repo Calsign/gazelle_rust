@@ -96,6 +96,10 @@ fn handle_cargo_toml_request(
 
     if let Some(ref package) = manifest.package {
         response.name = package.name.clone();
+        response.edition = match package.edition {
+            cargo_toml::Inheritable::Set(edition) => edition.to_string(),
+            cargo_toml::Inheritable::Inherited => String::new(),
+        };
         let feature_resolver = cargo_toml::features::Resolver::new();
         let features_hmap = feature_resolver.parse(&manifest).features;
         let default_features_set = features_hmap
