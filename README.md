@@ -123,6 +123,17 @@ Apart from influencing the value of the `crate_features` attribute, these settin
 dependency resolution. Imports that are guarded with disabled features will not result in addition
 of their corresponding targets to the list of dependencies.
 
+In this mode of operation it is also possible to specify the default Rust edition, like so:
+
+```py
+# gazelle:rust_default_edition 2021
+```
+
+Whenever the edition is directly specified in the `Cargo.toml` file (i.e. it is not inherited from
+the workspace file) and it is different from the default edition, the corresponding `"edition"`
+attribute will be added to the generated targets. If `gazelle:rust_default_edition` is not set, the
+`"edition"` attribute will always be added when it is specified.
+
 ## Assigning dependencies
 
 gazelle\_rust parses each source file and identifies any path that looks like an external crate

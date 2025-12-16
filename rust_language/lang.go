@@ -50,6 +50,9 @@ var (
 
 	// Enable or disable default features.
 	defaultFeaturesDirective string = "rust_default_features"
+
+	// Set the default edition.
+	defaultEditionDirective string = "rust_default_edition"
 )
 
 type rustConfig struct {
@@ -60,6 +63,7 @@ type rustConfig struct {
 	KindMapInverse     map[string]string
 	EnabledFeatures    map[string]bool
 	DefaultFeatures    bool
+	DefaultEdition     string
 }
 
 func (cfg *rustConfig) Clone() *rustConfig {
@@ -168,7 +172,7 @@ func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 func (*rustLang) KnownDirectives() []string {
 	return []string{modeDirective, lockfileDirective, cargoLockfileDirective,
 		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective,
-		rustFeatureDirective, defaultFeaturesDirective}
+		rustFeatureDirective, defaultFeaturesDirective, defaultEditionDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
@@ -202,6 +206,7 @@ func (l *rustLang) Configure(c *config.Config, rel string, from *rule.File) {
 			KindMapInverse:     make(map[string]string),
 			EnabledFeatures:    make(map[string]bool),
 			DefaultFeatures:    true, // enable default features by default
+			DefaultEdition:     "",
 		}
 	} else {
 		// NOTE(will): important to clone so that we don't leak state across directories
@@ -259,6 +264,8 @@ func (l *rustLang) Configure(c *config.Config, rel string, from *rule.File) {
 						directive.Key, directive.Key)
 				}
 				cfg.DefaultFeatures = value
+			} else if directive.Key == defaultEditionDirective {
+				cfg.DefaultEdition = directive.Value
 			}
 		}
 	}

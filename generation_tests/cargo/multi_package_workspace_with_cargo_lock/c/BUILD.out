@@ -4,6 +4,7 @@ rust_library(
     name = "c",
     srcs = ["src/lib.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
         "//a:a_lib",

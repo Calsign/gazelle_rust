@@ -7,5 +7,6 @@ rust_library(
     name = "default_features",
     srcs = ["src/lib.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2024",
     visibility = ["//visibility:public"],
 )
