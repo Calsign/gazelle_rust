@@ -7,6 +7,7 @@ rust_library(
     srcs = ["src/lib.rs"],
     compile_data = ["Cargo.toml"],
     crate_name = "dependencies",
+    edition = "2021",
     visibility = ["//visibility:public"],
 )
 
@@ -14,6 +15,7 @@ rust_binary(
     name = "dependencies",
     srcs = ["src/main.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     visibility = ["//visibility:public"],
     deps = [":dependencies_lib"],
 )
@@ -22,6 +24,7 @@ rust_test(
     name = "integration_test",
     srcs = ["tests/integration_test.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     visibility = ["//visibility:public"],
     deps = [":dependencies_lib"],
 )

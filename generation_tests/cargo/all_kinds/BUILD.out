@@ -7,6 +7,7 @@ rust_library(
     srcs = ["src/lib.rs"],
     compile_data = ["Cargo.toml"],
     crate_name = "all_kinds",
+    edition = "2021",
     visibility = ["//visibility:public"],
 )
 
@@ -14,6 +15,7 @@ rust_binary(
     name = "all_kinds",
     srcs = ["src/main.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     visibility = ["//visibility:public"],
 )
 
@@ -21,6 +23,7 @@ rust_binary(
     name = "another_executable",
     srcs = ["src/bin/another_executable.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     visibility = ["//visibility:public"],
 )
 
@@ -31,6 +34,7 @@ rust_binary(
         "src/bin/multi_file_executable/some_module.rs",
     ],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     visibility = ["//visibility:public"],
 )
 
@@ -38,6 +42,7 @@ rust_binary(
     name = "named_executable",
     srcs = ["src/bin/named_executable.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     visibility = ["//visibility:public"],
 )
 
@@ -48,6 +53,7 @@ rust_test(
         "tests/multi_file_test/test_module.rs",
     ],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     visibility = ["//visibility:public"],
 )
 
@@ -55,6 +61,7 @@ rust_test(
     name = "some_integration_test",
     srcs = ["tests/some_integration_test.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     visibility = ["//visibility:public"],
 )
 
@@ -62,6 +69,7 @@ rust_binary(
     name = "large_input",
     srcs = ["benches/large_input.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     tags = ["bench"],
     visibility = ["//visibility:public"],
 )
@@ -73,6 +81,7 @@ rust_binary(
         "benches/multi_file_bench/main.rs",
     ],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     tags = ["bench"],
     visibility = ["//visibility:public"],
 )
@@ -84,6 +93,7 @@ rust_binary(
         "examples/multi_file_example/main.rs",
     ],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     tags = ["example"],
     visibility = ["//visibility:public"],
 )
@@ -92,6 +102,7 @@ rust_binary(
     name = "simple",
     srcs = ["examples/simple.rs"],
     compile_data = ["Cargo.toml"],
+    edition = "2021",
     tags = ["example"],
     visibility = ["//visibility:public"],
 )

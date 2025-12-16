@@ -44,6 +44,15 @@ var (
 
 	// Remove an external crate from the "unused crates" warning.
 	allowUnusedCrateDirective string = "rust_allow_unused_crate"
+
+	// Enable or disable Rust features.
+	rustFeatureDirective string = "rust_feature"
+
+	// Enable or disable default features.
+	defaultFeaturesDirective string = "rust_default_features"
+
+	// Set the default edition.
+	defaultEditionDirective string = "rust_default_edition"
 )
 
 type rustConfig struct {
@@ -52,6 +61,9 @@ type rustConfig struct {
 	CratesPrefix       string
 	ProcMacroOverrides map[string]bool
 	KindMapInverse     map[string]string
+	EnabledFeatures    map[string]bool
+	DefaultFeatures    bool
+	DefaultEdition     string
 }
 
 func (cfg *rustConfig) Clone() *rustConfig {
@@ -159,7 +171,8 @@ func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 
 func (*rustLang) KnownDirectives() []string {
 	return []string{modeDirective, lockfileDirective, cargoLockfileDirective,
-		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective}
+		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective,
+		rustFeatureDirective, defaultFeaturesDirective, defaultEditionDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
@@ -167,7 +180,22 @@ func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
 	return c.Exts[l.Name()].(*rustConfig)
 }
 
-func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
+func (l *rustLang) HandleBooleanDirective(c *config.Config,
+	directiveKey string, directiveValue string, from *rule.File) (string, bool) {
+	split := strings.Split(directiveValue, " ")
+	if len(split) != 2 || (split[1] != "true" && split[1] != "false") {
+		l.Log(c, logFatal, from, "bad %s, should be gazelle:%s <crate> <true|false>",
+			directiveKey, directiveKey)
+	}
+	value, err := strconv.ParseBool(split[1])
+	if err != nil {
+		l.Log(c, logFatal, from, "bad %s, should be gazelle:%s <crate> <true|false>",
+			directiveKey, directiveKey)
+	}
+	return split[0], value
+}
+
+func (l *rustLang) Configure(c *config.Config, rel string, from *rule.File) {
 	var cfg *rustConfig
 	if _, ok := c.Exts[l.Name()]; !ok {
 		cfg = &rustConfig{
@@ -176,6 +204,9 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 			CratesPrefix:       "",
 			ProcMacroOverrides: make(map[string]bool),
 			KindMapInverse:     make(map[string]string),
+			EnabledFeatures:    make(map[string]bool),
+			DefaultFeatures:    true, // enable default features by default
+			DefaultEdition:     "",
 		}
 	} else {
 		// NOTE(will): important to clone so that we don't leak state across directories
@@ -190,8 +221,8 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 		cfg.LockfileCrates = l.NewLockfileCrates(c, lockfile, cargo)
 
 		allowedUnusedCrates := make(map[string]bool)
-		if f != nil {
-			for _, directive := range f.Directives {
+		if from != nil {
+			for _, directive := range from.Directives {
 				if directive.Key == allowUnusedCrateDirective {
 					allowedUnusedCrates[directive.Value] = true
 				}
@@ -206,11 +237,11 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 		})
 	}
 
-	if f != nil {
-		for _, directive := range f.Directives {
+	if from != nil {
+		for _, directive := range from.Directives {
 			if directive.Key == modeDirective {
 				if directive.Value != modePureBazel && directive.Value != modeGenerateFromCargo {
-					l.Log(c, logFatal, f, "bad %s: %s, valid options are %v", modeDirective,
+					l.Log(c, logFatal, from, "bad %s: %s, valid options are %v", modeDirective,
 						directive.Value, []string{modePureBazel, modeGenerateFromCargo})
 				}
 				cfg.Mode = directive.Value
@@ -221,17 +252,20 @@ func (l *rustLang) Configure(c *config.Config, rel string, f *rule.File) {
 			} else if directive.Key == cratesPrefixDirective {
 				cfg.CratesPrefix = directive.Value
 			} else if directive.Key == procMacroOverrideDirective {
-				split := strings.Split(directive.Value, " ")
-				if len(split) != 2 || (split[1] != "true" && split[1] != "false") {
-					l.Log(c, logFatal, f, "bad %s, should be gazelle:%s <crate> <true|false>",
-						procMacroOverrideDirective, procMacroOverrideDirective)
-				}
-				val, err := strconv.ParseBool(split[1])
+				key, value := l.HandleBooleanDirective(c, directive.Key, directive.Value, from)
+				cfg.ProcMacroOverrides[key] = value
+			} else if directive.Key == rustFeatureDirective {
+				key, value := l.HandleBooleanDirective(c, directive.Key, directive.Value, from)
+				cfg.EnabledFeatures[key] = value
+			} else if directive.Key == defaultFeaturesDirective {
+				value, err := strconv.ParseBool(directive.Value)
 				if err != nil {
-					l.Log(c, logFatal, f, "bad %s, should be gazelle:%s <crate> <true|false>",
-						procMacroOverrideDirective, procMacroOverrideDirective)
+					l.Log(c, logFatal, "bad %s, should be gazelle:%s <true|false>",
+						directive.Key, directive.Key)
 				}
-				cfg.ProcMacroOverrides[split[0]] = val
+				cfg.DefaultFeatures = value
+			} else if directive.Key == defaultEditionDirective {
+				cfg.DefaultEdition = directive.Value
 			}
 		}
 	}
