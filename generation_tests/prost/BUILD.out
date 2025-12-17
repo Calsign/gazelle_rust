@@ -1,0 +1,19 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust_prost//:defs.bzl", "rust_prost_library")
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+)
+
+rust_prost_library(
+    name = "foo_rust_proto",
+    proto = ":foo_proto",
+)
+
+rust_library(
+    name = "lib",
+    srcs = ["lib.rs"],
+    deps = [":foo_rust_proto"],
+)

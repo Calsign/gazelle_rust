@@ -8,8 +8,9 @@ use clap::Parser;
 use prost::Message;
 
 use messages_proto::{
-    lockfile_crates_request, request, CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, Hints,
-    LockfileCratesRequest, LockfileCratesResponse, Request, RustImportsRequest, RustImportsResponse,
+    CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, Hints, LockfileCratesRequest,
+    LockfileCratesResponse, Request, RustImportsRequest, RustImportsResponse,
+    lockfile_crates_request, request,
 };
 
 #[derive(clap::Parser)]
