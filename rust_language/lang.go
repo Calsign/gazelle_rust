@@ -94,6 +94,7 @@ var (
 	commonDefs []string = []string{"rust_library", "rust_binary", "rust_test",
 		"rust_proc_macro", "rust_shared_library", "rust_static_library"}
 	protoDefs []string = []string{"rust_proto_library", "rust_grpc_library"}
+	prostDefs []string = []string{"rust_prost_library"}
 	cargoDefs []string = []string{"cargo_build_script"}
 )
 
@@ -120,8 +121,15 @@ func (*rustLang) Kinds() map[string]rule.KindInfo {
 		}
 	}
 
-	for _, cargoDefs := range cargoDefs {
-		kinds[cargoDefs] = rule.KindInfo{
+	for _, prostDef := range prostDefs {
+		kinds[prostDef] = rule.KindInfo{
+			MergeableAttrs: map[string]bool{},
+			ResolveAttrs:   map[string]bool{},
+		}
+	}
+
+	for _, cargoDef := range cargoDefs {
+		kinds[cargoDef] = rule.KindInfo{
 			NonEmptyAttrs:  map[string]bool{"srcs": true},
 			MergeableAttrs: map[string]bool{"srcs": true, "deps": true, "proc_macro_deps": true},
 			ResolveAttrs:   map[string]bool{"deps": true, "proc_macro_deps": true},
@@ -140,6 +148,10 @@ func (*rustLang) Loads() []rule.LoadInfo {
 		{
 			Name:    "@rules_rust//proto:proto.bzl",
 			Symbols: protoDefs,
+		},
+		{
+			Name:    "@rules_rust_prost//:defs.bzl",
+			Symbols: prostDefs,
 		},
 		{
 			Name:    "@rules_rust//cargo:defs.bzl",

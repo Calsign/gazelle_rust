@@ -4,7 +4,7 @@ use std::error::Error;
 use std::path::PathBuf;
 
 use cargo_bazel::api::lockfile::CargoBazelLockfile;
-use messages_rust_proto::{Package, PackageDependency};
+use messages_proto::{Package, PackageDependency};
 
 pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>, Box<dyn Error>> {
     let context = match cargo_bazel::api::lockfile::parse(&lockfile_path) {
@@ -25,11 +25,14 @@ pub fn get_bazel_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
         let crate_ = context.crate_info(id).expect("missing crate");
 
         if let Some(library_target_name) = &crate_.library_target_name() {
-            let mut package = Package::default();
-            package.set_name(crate_.name().to_string());
-            package.set_crate_name(library_target_name.to_string());
-            package.set_proc_macro(is_proc_macro);
-            package.set_version(crate_.version().to_string());
+            let package = Package {
+                name: crate_.name().to_string(),
+                crate_name: library_target_name.to_string(),
+                proc_macro: is_proc_macro,
+                version: crate_.version().to_string(),
+                workspace_member: false,
+                dependencies: Vec::new(),
+            };
 
             crates.push(package);
         }
@@ -74,7 +77,6 @@ pub fn make_package_dependency(dep: &cargo_lock::Dependency) -> PackageDependenc
     PackageDependency {
         name: dep.name.as_str().to_string(),
         version: dep.version.to_string(),
-        ..Default::default()
     }
 }
 
@@ -95,20 +97,22 @@ pub fn get_cargo_lockfile_crates(lockfile_path: PathBuf) -> Result<Vec<Package>,
 
     for pkg in lockfile.packages {
         if !is_workspace_target(pkg.name.as_str()) {
-            let mut package = Package::default();
-            package.name = pkg.name.as_str().to_string();
-            package.crate_name = package.name.replace('-', "_");
-            package.proc_macro = pkg
-                .dependencies
-                .iter()
-                .any(|dep| is_proc_macro_dep(dep.name.as_str()));
-            package.version = pkg.version.to_string();
-            package.workspace_member = pkg.source.is_none();
-            package.dependencies = pkg
-                .dependencies
-                .into_iter()
-                .map(|dep| make_package_dependency(&dep))
-                .collect();
+            let name = pkg.name.as_str().to_string();
+            let package = Package {
+                name: name.clone(),
+                crate_name: name.replace('-', "_"),
+                proc_macro: pkg
+                    .dependencies
+                    .iter()
+                    .any(|dep| is_proc_macro_dep(dep.name.as_str())),
+                version: pkg.version.to_string(),
+                workspace_member: pkg.source.is_none(),
+                dependencies: pkg
+                    .dependencies
+                    .into_iter()
+                    .map(|dep| make_package_dependency(&dep))
+                    .collect(),
+            };
 
             crates.push(package);
         }

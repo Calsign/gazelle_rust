@@ -30,7 +30,7 @@ rust_binary(
         "//proto:messages_rust_proto",
         "@crates//:cargo_toml",
         "@crates//:clap",
-        "@rules_rust_protobuf//3rdparty/crates:protobuf",
+        "@rules_rust_prost//private/3rdparty/crates:prost",
     ],
 )
 

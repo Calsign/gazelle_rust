@@ -41,6 +41,19 @@ func (l *rustLang) Imports(c *config.Config, r *rule.Rule,
 			Lang: l.Name(),
 			Imp:  r.Name(),
 		})
+	case "rust_prost_library":
+		// rules_rust_prost derives the crate name from the proto_library target name
+		protoAttr := r.AttrString("proto")
+		if protoAttr != "" {
+			protoLabel, err := label.Parse(protoAttr)
+			if err == nil {
+				crateName := strings.ReplaceAll(protoLabel.Name, "-", "_")
+				specs = append(specs, resolve.ImportSpec{
+					Lang: l.Name(),
+					Imp:  crateName,
+				})
+			}
+		}
 	}
 
 	return specs

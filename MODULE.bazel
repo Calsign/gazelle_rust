@@ -31,9 +31,9 @@ use_repo(rust, "rust_toolchains")
 
 register_toolchains("@rust_toolchains//:all")
 
-### Protobuf
+### Protobuf (prost)
 
-bazel_dep(name = "rules_rust_protobuf", version = "0.67.0")
+bazel_dep(name = "rules_rust_prost", version = "0.67.0")
 
 # Rust dependencies
 crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate", isolate=True)
