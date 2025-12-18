@@ -1,7 +1,7 @@
 load("@rules_go//go:def.bzl", "go_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_rust_protobuf//:defs.bzl", "rust_proto_library")
+load("@rules_rust_prost//:defs.bzl", "rust_prost_library")
 
 proto_library(
     name = "messages_proto",
@@ -9,10 +9,10 @@ proto_library(
     visibility = ["//visibility:public"],
 )
 
-rust_proto_library(
+rust_prost_library(
     name = "messages_rust_proto",
+    proto = ":messages_proto",
     visibility = ["//visibility:public"],
-    deps = [":messages_proto"],
 )
 
 go_proto_library(

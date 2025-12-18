@@ -5,13 +5,12 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use clap::Parser;
+use prost::Message;
 
-use protobuf::{CodedInputStream, CodedOutputStream, RepeatedField};
-
-use messages_rust_proto::{
+use messages_proto::{
     CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, Hints, LockfileCratesRequest,
-    LockfileCratesRequest_oneof_lockfile, LockfileCratesResponse, Request, Request_oneof_kind,
-    RustImportsRequest, RustImportsResponse,
+    LockfileCratesResponse, Request, RustImportsRequest, RustImportsResponse,
+    lockfile_crates_request, request,
 };
 
 #[derive(clap::Parser)]
@@ -28,23 +27,24 @@ fn handle_rust_imports_request(
     let mut response = RustImportsResponse::default();
     match rust_imports {
         Ok(rust_imports) => {
-            let mut hints = Hints::default();
-            hints.set_has_main(rust_imports.hints.has_main);
-            hints.set_has_test(rust_imports.hints.has_test);
-            hints.set_has_proc_macro(rust_imports.hints.has_proc_macro);
+            let hints = Hints {
+                has_main: rust_imports.hints.has_main,
+                has_test: rust_imports.hints.has_test,
+                has_proc_macro: rust_imports.hints.has_proc_macro,
+            };
 
-            response.set_success(true);
-            response.set_hints(hints);
-            response.imports = RepeatedField::from_vec(rust_imports.imports);
-            response.test_imports = RepeatedField::from_vec(rust_imports.test_imports);
-            response.extern_mods = RepeatedField::from_vec(rust_imports.extern_mods);
+            response.success = true;
+            response.hints = Some(hints);
+            response.imports = rust_imports.imports;
+            response.test_imports = rust_imports.test_imports;
+            response.extern_mods = rust_imports.extern_mods;
         }
         Err(err) => {
             // Don't crash gazelle if we encounter an error, instead bubble it up so that we can
             // report it and keep going.
             // TODO: It's possible that some errors here actually should be fatal.
-            response.set_success(false);
-            response.set_error_msg(err.to_string());
+            response.success = false;
+            response.error_msg = err.to_string();
         }
     }
 
@@ -54,30 +54,28 @@ fn handle_rust_imports_request(
 fn handle_lockfile_crates_request(
     request: LockfileCratesRequest,
 ) -> Result<LockfileCratesResponse, Box<dyn Error>> {
-    let crates = match request.lockfile.unwrap() {
-        LockfileCratesRequest_oneof_lockfile::lockfile_path(path) => {
+    let crates = match request.lockfile {
+        Some(lockfile_crates_request::Lockfile::LockfilePath(path)) => {
             lockfile_crates::get_bazel_lockfile_crates(PathBuf::from(path))?
         }
-        LockfileCratesRequest_oneof_lockfile::cargo_lockfile_path(path) => {
+        Some(lockfile_crates_request::Lockfile::CargoLockfilePath(path)) => {
             lockfile_crates::get_cargo_lockfile_crates(PathBuf::from(path))?
         }
+        None => return Err("No lockfile path provided".into()),
     };
 
-    let mut response = LockfileCratesResponse::default();
-    response.set_crates(RepeatedField::from_vec(crates));
-
-    Ok(response)
+    Ok(LockfileCratesResponse { crates })
 }
 
 fn build_crate_info(product: cargo_toml::Product) -> CargoCrateInfo {
     let mut crate_info = CargoCrateInfo::default();
 
     if let Some(name) = product.name {
-        crate_info.set_name(name);
+        crate_info.name = name;
     }
     if let Some(path) = product.path {
         let normalized_path = path.strip_prefix("./").unwrap_or(&path).to_string();
-        crate_info.set_srcs(RepeatedField::from_vec(vec![normalized_path]));
+        crate_info.srcs = vec![normalized_path];
     }
     crate_info.proc_macro = product.proc_macro;
 
@@ -90,29 +88,23 @@ fn handle_cargo_toml_request(
     let mut manifest = cargo_toml::Manifest::from_path(&request.file_path)?;
     manifest.complete_from_path(&PathBuf::from(&request.file_path))?;
 
-    let mut response = CargoTomlResponse::default();
-    response.set_success(true);
-    if let Some(package) = manifest.package {
-        response.name = package.name;
-    }
+    let name = manifest.package.map(|p| p.name).unwrap_or_default();
+    let library = manifest.lib.map(build_crate_info);
+    let binaries = manifest.bin.into_iter().map(build_crate_info).collect();
+    let tests = manifest.test.into_iter().map(build_crate_info).collect();
+    let benches = manifest.bench.into_iter().map(build_crate_info).collect();
+    let examples = manifest.example.into_iter().map(build_crate_info).collect();
 
-    if let Some(lib) = manifest.lib {
-        response.set_library(build_crate_info(lib));
-    }
-    response.set_binaries(RepeatedField::from_vec(
-        manifest.bin.into_iter().map(build_crate_info).collect(),
-    ));
-    response.set_tests(RepeatedField::from_vec(
-        manifest.test.into_iter().map(build_crate_info).collect(),
-    ));
-    response.set_benches(RepeatedField::from_vec(
-        manifest.bench.into_iter().map(build_crate_info).collect(),
-    ));
-    response.set_examples(RepeatedField::from_vec(
-        manifest.example.into_iter().map(build_crate_info).collect(),
-    ));
-
-    Ok(response)
+    Ok(CargoTomlResponse {
+        success: true,
+        name,
+        library,
+        binaries,
+        tests,
+        benches,
+        examples,
+        error_msg: String::new(),
+    })
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -130,10 +122,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         Args::StreamProto => {
             let mut stdin = std::io::stdin();
-            let mut writer = std::io::stdout();
-            // TODO: avoid opening two stdout handles
-            let mut writer2 = std::io::stdout();
-            let mut stdout = CodedOutputStream::new(&mut writer);
+            let mut stdout = std::io::stdout();
 
             let mut buf: Vec<u8> = vec![0; 1024];
             const SF32: usize = std::mem::size_of::<u32>();
@@ -146,33 +135,32 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
                     res => res?,
                 }
-                let size = CodedInputStream::from_bytes(&buf[..SF32]).read_sfixed32()? as usize;
+                let size = i32::from_le_bytes(buf[..SF32].try_into()?) as usize;
                 if size > buf.len() {
                     // grow buffer as needed
                     buf = vec![0; size];
                 }
 
                 stdin.read_exact(&mut buf[..size])?;
-                let request: Request = protobuf::parse_from_bytes(&buf[..size])?;
+                let request = Request::decode(&buf[..size])?;
 
                 if let Some(kind) = request.kind {
-                    let response: Box<dyn protobuf::Message> = match kind {
-                        Request_oneof_kind::rust_imports(request) => {
-                            Box::new(handle_rust_imports_request(request)?)
+                    let response_bytes: Vec<u8> = match kind {
+                        request::Kind::RustImports(request) => {
+                            handle_rust_imports_request(request)?.encode_to_vec()
                         }
-                        Request_oneof_kind::lockfile_crates(request) => {
-                            Box::new(handle_lockfile_crates_request(request)?)
+                        request::Kind::LockfileCrates(request) => {
+                            handle_lockfile_crates_request(request)?.encode_to_vec()
                         }
-                        Request_oneof_kind::cargo_toml(request) => {
-                            Box::new(handle_cargo_toml_request(request)?)
+                        request::Kind::CargoToml(request) => {
+                            handle_cargo_toml_request(request)?.encode_to_vec()
                         }
                     };
 
-                    stdout.write_fixed32_no_tag(response.compute_size())?;
-                    response.write_to(&mut stdout)?;
+                    let size_bytes = (response_bytes.len() as u32).to_le_bytes();
+                    stdout.write_all(&size_bytes)?;
+                    stdout.write_all(&response_bytes)?;
                     stdout.flush()?;
-                    // need to flush the underlying stdout because protobuf doesn't do that for us
-                    writer2.flush()?;
                 }
             }
         }
