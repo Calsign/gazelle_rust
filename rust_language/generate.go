@@ -91,7 +91,7 @@ func freshRuleName(request string, existingRuleNames map[string]bool) *string {
 	}
 }
 
-var ruleCloneAttrs = []string{"srcs", "crate"}
+var ruleCloneAttrs = []string{"srcs", "crate", "crate_root"}
 
 // It's nice to be able to re-use existing Rules so that we can resolve them but preserve the
 // grouping of srcs, which is not something Gazelle handles natively. By making a new rule with the
@@ -139,6 +139,19 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 	// map of crate test rules; key is the non-rust_test rule name that each one refers to
 	testRules := make(map[string]*rule.Rule)
 
+	// Discover modules claimed by lib.rs crate roots before processing new files.
+	// This prevents creating standalone rules for files that are modules of a lib.rs crate.
+	filesInCrates := map[string]bool{}
+	for _, file := range args.RegularFiles {
+		if strings.HasSuffix(file, ".rs") && filepath.Base(file) == "lib.rs" {
+			importsResponses := map[string]*pb.RustImportsResponse{}
+			l.discoverModule(args.Config, file, &args, &importsResponses, true)
+			for source := range importsResponses {
+				filesInCrates[source] = true
+			}
+		}
+	}
+
 	addRule := func(rule *rule.Rule, responses []*pb.RustImportsResponse) {
 		ruleData := RuleData{
 			rule:        rule,
@@ -175,17 +188,55 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 				// reset it. It is probably a bug that Gazelle does not already handle this for us.
 				rule.SetKind(unmappedKind)
 
-				responses := []*pb.RustImportsResponse{}
-
-				for _, file := range rule.AttrStrings("srcs") {
-					filesInExistingRules[file] = true
-
-					if strings.HasSuffix(file, ".rs") {
-						response := l.parseFile(args.Config, file, &args)
-						if response != nil {
-							responses = append(responses, response)
+				// Check if this rule is a lib.rs crate
+				crateRoot := rule.AttrString("crate_root")
+				if crateRoot == "" {
+					srcs := rule.AttrStrings("srcs")
+					for _, src := range srcs {
+						if filepath.Base(src) == "lib.rs" {
+							crateRoot = src
+							break
 						}
 					}
+				}
+				isLibCrate := filepath.Base(crateRoot) == "lib.rs"
+
+				responses := []*pb.RustImportsResponse{}
+				validSrcs := []string{}
+
+				if isLibCrate && crateRoot != "" {
+					// For lib.rs crates, re-discover all modules
+					importsResponses := map[string]*pb.RustImportsResponse{}
+					l.discoverModule(args.Config, crateRoot, &args, &importsResponses, true)
+					for source, sourceResponse := range importsResponses {
+						filesInExistingRules[source] = true
+						validSrcs = append(validSrcs, source)
+						if sourceResponse != nil {
+							responses = append(responses, sourceResponse)
+						}
+					}
+				} else {
+					for _, file := range rule.AttrStrings("srcs") {
+						// Skip files that no longer exist on disk
+						filePath := path.Join(args.Dir, file)
+						if _, err := os.Stat(filePath); os.IsNotExist(err) {
+							continue
+						}
+
+						filesInExistingRules[file] = true
+						validSrcs = append(validSrcs, file)
+
+						if strings.HasSuffix(file, ".rs") {
+							response := l.parseFile(args.Config, file, &args)
+							if response != nil {
+								responses = append(responses, response)
+							}
+						}
+					}
+				}
+
+				if len(validSrcs) > 0 {
+					rule.SetAttr("srcs", validSrcs)
 				}
 
 				addRule(rule, responses)
@@ -195,6 +246,13 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 
 	for _, file := range args.RegularFiles {
 		if !filesInExistingRules[file] && strings.HasSuffix(file, ".rs") {
+			filename := filepath.Base(file)
+
+			// Skip non-crate-root files that belong to a crate
+			if filename != "lib.rs" && filesInCrates[file] {
+				continue
+			}
+
 			response := l.parseFile(args.Config, file, &args)
 			if response == nil {
 				continue
@@ -208,12 +266,30 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 				continue
 			}
 
-			rule := rule.NewRule(inferredKind, *ruleName)
-			rule.SetAttr("srcs", []string{file})
-
+			srcs := []string{file}
 			responses := []*pb.RustImportsResponse{response}
 
-			addRule(rule, responses)
+			// For lib.rs crate roots, discover modules and collect all srcs
+			if filename == "lib.rs" {
+				importsResponses := map[string]*pb.RustImportsResponse{}
+				l.discoverModule(args.Config, file, &args, &importsResponses, true)
+				srcs = []string{}
+				responses = []*pb.RustImportsResponse{}
+				for source, sourceResponse := range importsResponses {
+					srcs = append(srcs, source)
+					if sourceResponse != nil {
+						responses = append(responses, sourceResponse)
+					}
+				}
+			}
+
+			newRule := rule.NewRule(inferredKind, *ruleName)
+			newRule.SetAttr("srcs", srcs)
+			if len(srcs) > 1 {
+				newRule.SetAttr("crate_root", file)
+			}
+
+			addRule(newRule, responses)
 		}
 	}
 
