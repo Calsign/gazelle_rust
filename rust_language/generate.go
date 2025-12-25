@@ -142,6 +142,14 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 	// Discover modules claimed by lib.rs crate roots before processing new files.
 	// This prevents creating standalone rules for files that are modules of a lib.rs crate.
 	filesInCrates := map[string]bool{}
+
+	// First, check if any files in this directory are claimed by a parent lib.rs crate.
+	// This handles subdirectory modules (e.g., subdir/mod.rs claimed by parent's lib.rs).
+	for file := range l.getFilesClaimedByParent(args.Config, &args) {
+		filesInCrates[file] = true
+	}
+
+	// Then discover modules claimed by lib.rs crate roots in THIS directory.
 	for _, file := range args.RegularFiles {
 		if strings.HasSuffix(file, ".rs") && filepath.Base(file) == "lib.rs" {
 			importsResponses := map[string]*pb.RustImportsResponse{}
@@ -611,4 +619,153 @@ func fileExists(path string, args *language.GenerateArgs) bool {
 	fullPath := filepath.Join(args.Dir, path)
 	_, err := os.Stat(fullPath)
 	return err == nil
+}
+
+// Returns the set of files in this directory that are claimed by a parent lib.rs crate.
+// This includes mod.rs (if this directory is a module) and any files declared via `mod`
+// in mod.rs.
+func (l *rustLang) getFilesClaimedByParent(c *config.Config, args *language.GenerateArgs) map[string]bool {
+	claimed := make(map[string]bool)
+
+	rel := args.Rel
+	if rel == "" || rel == "." {
+		return claimed
+	}
+
+	pathComponents := strings.Split(filepath.ToSlash(rel), "/")
+
+	// Walk up to find the nearest ancestor with lib.rs
+	for ancestorDepth := len(pathComponents) - 1; ancestorDepth >= 0; ancestorDepth-- {
+		var ancestorRel string
+		if ancestorDepth == 0 {
+			ancestorRel = ""
+		} else {
+			ancestorRel = strings.Join(pathComponents[:ancestorDepth], "/")
+		}
+		ancestorDir := filepath.Join(c.RepoRoot, ancestorRel)
+
+		libPath := filepath.Join(ancestorDir, "lib.rs")
+		if _, err := os.Stat(libPath); err == nil {
+			// Found a lib.rs ancestor. Verify the module chain and get claimed files.
+			l.getClaimedFilesFromChain(c, ancestorDir, ancestorRel, pathComponents[ancestorDepth:], args, claimed)
+			return claimed
+		}
+	}
+
+	return claimed
+}
+
+// Verifies there's a valid chain of mod declarations from startDir through each
+// component in pathComponents, and populates the claimed map with files in the target
+// directory that are part of the module tree.
+func (l *rustLang) getClaimedFilesFromChain(c *config.Config, startDir, startRel string,
+	pathComponents []string, args *language.GenerateArgs, claimed map[string]bool) {
+
+	if len(pathComponents) == 0 {
+		return
+	}
+
+	currentDir := startDir
+	currentRel := startRel
+	currentFile := "lib.rs"
+
+	for i, component := range pathComponents {
+		parseArgs := &language.GenerateArgs{
+			Config: args.Config,
+			Dir:    currentDir,
+			Rel:    currentRel,
+		}
+
+		response := l.parseFile(c, currentFile, parseArgs)
+		if response == nil {
+			return
+		}
+
+		// Check if this file declares `mod <component>;`
+		found := false
+		for _, externMod := range response.ExternMods {
+			if externMod == component {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return
+		}
+
+		// If this is the last component, we've reached the target directory
+		if i == len(pathComponents)-1 {
+			// Check for mod.rs style (old) or adjacent component.rs style (Rust 2018+)
+			// We accept both without requiring edition configuration.
+			targetDir := filepath.Join(currentDir, component)
+			modRsPath := filepath.Join(targetDir, "mod.rs")
+			adjacentModPath := filepath.Join(currentDir, component+".rs")
+
+			if _, err := os.Stat(modRsPath); err == nil {
+				// Old style: component/mod.rs is the module file
+				claimed["mod.rs"] = true
+				l.claimDeclaredSubmodules(c, targetDir, "mod.rs", claimed)
+			} else if _, err := os.Stat(adjacentModPath); err == nil {
+				// Rust 2018+ style: component.rs (in parent dir) is the module file,
+				// but its submodules live in component/ directory
+				l.claimDeclaredSubmodules(c, targetDir, adjacentModPath, claimed)
+			}
+			return
+		}
+
+		// For intermediate directories, check both module styles
+		modRsPath := filepath.Join(currentDir, component, "mod.rs")
+		adjacentModPath := filepath.Join(currentDir, component+".rs")
+
+		if _, err := os.Stat(modRsPath); err == nil {
+			// Old style: component/mod.rs
+			currentDir = filepath.Join(currentDir, component)
+			currentRel = path.Join(currentRel, component)
+			currentFile = "mod.rs"
+		} else if _, err := os.Stat(adjacentModPath); err == nil {
+			// Rust 2018+ style: component.rs (stays in same directory for parsing)
+			currentFile = component + ".rs"
+			// Note: for next iteration, we still descend into the component directory
+			// because that's where submodules live
+			currentDir = filepath.Join(currentDir, component)
+			currentRel = path.Join(currentRel, component)
+		} else {
+			// Neither exists, chain is broken
+			return
+		}
+	}
+}
+
+// claimDeclaredSubmodules parses a module file and claims any .rs files in targetDir
+// that it declares via `mod` statements. The moduleFile can be either:
+// - A filename relative to targetDir (e.g., "mod.rs" for old style)
+// - An absolute path (e.g., "/path/to/subdir.rs" for Rust 2018+ style)
+func (l *rustLang) claimDeclaredSubmodules(c *config.Config, targetDir, moduleFile string, claimed map[string]bool) {
+	var parseDir, parseFile string
+
+	if filepath.IsAbs(moduleFile) {
+		parseDir = filepath.Dir(moduleFile)
+		parseFile = filepath.Base(moduleFile)
+	} else {
+		parseDir = targetDir
+		parseFile = moduleFile
+	}
+
+	parseArgs := &language.GenerateArgs{
+		Config: c,
+		Dir:    parseDir,
+		Rel:    "", // Not used for parsing
+	}
+	response := l.parseFile(c, parseFile, parseArgs)
+	if response != nil {
+		for _, externMod := range response.ExternMods {
+			// Check if this submodule is an adjacent file in targetDir
+			adjacentFile := externMod + ".rs"
+			adjacentPath := filepath.Join(targetDir, adjacentFile)
+			if _, err := os.Stat(adjacentPath); err == nil {
+				claimed[adjacentFile] = true
+			}
+		}
+	}
 }
