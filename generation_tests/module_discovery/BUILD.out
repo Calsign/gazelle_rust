@@ -1,0 +1,11 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "lib",
+    srcs = [
+        "bar.rs",
+        "foo.rs",
+        "lib.rs",
+    ],
+    crate_root = "lib.rs",
+)

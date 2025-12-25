@@ -91,7 +91,7 @@ func freshRuleName(request string, existingRuleNames map[string]bool) *string {
 	}
 }
 
-var ruleCloneAttrs = []string{"srcs", "crate"}
+var ruleCloneAttrs = []string{"srcs", "crate", "crate_root"}
 
 // It's nice to be able to re-use existing Rules so that we can resolve them but preserve the
 // grouping of srcs, which is not something Gazelle handles natively. By making a new rule with the
@@ -139,6 +139,30 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 	// map of crate test rules; key is the non-rust_test rule name that each one refers to
 	testRules := make(map[string]*rule.Rule)
 
+	// Shared map for module discovery memoization, to avoid re-parsing the same files when
+	// discoverModule is called multiple times.
+	importsResponses := map[string]*pb.RustImportsResponse{}
+
+	// Discover modules claimed by lib.rs crate roots before processing new files.
+	// This prevents creating standalone rules for files that are modules of a lib.rs crate.
+	filesInCrates := map[string]bool{}
+
+	// First, check if any files in this directory are claimed by a parent lib.rs crate.
+	// This handles subdirectory modules (e.g., subdir/mod.rs claimed by parent's lib.rs).
+	for file := range l.getFilesClaimedByParent(args.Config, &args) {
+		filesInCrates[file] = true
+	}
+
+	// Then discover modules claimed by lib.rs crate roots in THIS directory.
+	for _, file := range args.RegularFiles {
+		if strings.HasSuffix(file, ".rs") && filepath.Base(file) == "lib.rs" {
+			l.discoverModule(args.Config, file, &args, &importsResponses, true)
+			for source := range importsResponses {
+				filesInCrates[source] = true
+			}
+		}
+	}
+
 	addRule := func(rule *rule.Rule, responses []*pb.RustImportsResponse) {
 		ruleData := RuleData{
 			rule:        rule,
@@ -175,17 +199,54 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 				// reset it. It is probably a bug that Gazelle does not already handle this for us.
 				rule.SetKind(unmappedKind)
 
-				responses := []*pb.RustImportsResponse{}
-
-				for _, file := range rule.AttrStrings("srcs") {
-					filesInExistingRules[file] = true
-
-					if strings.HasSuffix(file, ".rs") {
-						response := l.parseFile(args.Config, file, &args)
-						if response != nil {
-							responses = append(responses, response)
+				// Check if this rule is a lib.rs crate
+				crateRoot := rule.AttrString("crate_root")
+				if crateRoot == "" {
+					srcs := rule.AttrStrings("srcs")
+					for _, src := range srcs {
+						if filepath.Base(src) == "lib.rs" {
+							crateRoot = src
+							break
 						}
 					}
+				}
+				isLibCrate := filepath.Base(crateRoot) == "lib.rs"
+
+				responses := []*pb.RustImportsResponse{}
+				validSrcs := []string{}
+
+				if isLibCrate && crateRoot != "" {
+					// For lib.rs crates, re-discover all modules
+					l.discoverModule(args.Config, crateRoot, &args, &importsResponses, true)
+					for source, sourceResponse := range importsResponses {
+						filesInExistingRules[source] = true
+						validSrcs = append(validSrcs, source)
+						if sourceResponse != nil {
+							responses = append(responses, sourceResponse)
+						}
+					}
+				} else {
+					for _, file := range rule.AttrStrings("srcs") {
+						// Skip files that no longer exist on disk
+						filePath := path.Join(args.Dir, file)
+						if _, err := os.Stat(filePath); os.IsNotExist(err) {
+							continue
+						}
+
+						filesInExistingRules[file] = true
+						validSrcs = append(validSrcs, file)
+
+						if strings.HasSuffix(file, ".rs") {
+							response := l.parseFile(args.Config, file, &args)
+							if response != nil {
+								responses = append(responses, response)
+							}
+						}
+					}
+				}
+
+				if existingRule.Attr("srcs") != nil {
+					rule.SetAttr("srcs", validSrcs)
 				}
 
 				addRule(rule, responses)
@@ -195,6 +256,13 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 
 	for _, file := range args.RegularFiles {
 		if !filesInExistingRules[file] && strings.HasSuffix(file, ".rs") {
+			filename := filepath.Base(file)
+
+			// Skip non-crate-root files that belong to a crate
+			if filename != "lib.rs" && filesInCrates[file] {
+				continue
+			}
+
 			response := l.parseFile(args.Config, file, &args)
 			if response == nil {
 				continue
@@ -208,12 +276,29 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 				continue
 			}
 
-			rule := rule.NewRule(inferredKind, *ruleName)
-			rule.SetAttr("srcs", []string{file})
-
+			srcs := []string{file}
 			responses := []*pb.RustImportsResponse{response}
 
-			addRule(rule, responses)
+			// For lib.rs crate roots, discover modules and collect all srcs
+			if filename == "lib.rs" {
+				l.discoverModule(args.Config, file, &args, &importsResponses, true)
+				srcs = []string{}
+				responses = []*pb.RustImportsResponse{}
+				for source, sourceResponse := range importsResponses {
+					srcs = append(srcs, source)
+					if sourceResponse != nil {
+						responses = append(responses, sourceResponse)
+					}
+				}
+			}
+
+			newRule := rule.NewRule(inferredKind, *ruleName)
+			newRule.SetAttr("srcs", srcs)
+			if len(srcs) > 1 {
+				newRule.SetAttr("crate_root", file)
+			}
+
+			addRule(newRule, responses)
 		}
 	}
 
@@ -535,4 +620,167 @@ func fileExists(path string, args *language.GenerateArgs) bool {
 	fullPath := filepath.Join(args.Dir, path)
 	_, err := os.Stat(fullPath)
 	return err == nil
+}
+
+// Returns the set of files in this directory that are claimed by a parent lib.rs crate.
+// This includes mod.rs (if this directory is a module) and any files declared via `mod`
+// in mod.rs.
+func (l *rustLang) getFilesClaimedByParent(c *config.Config, args *language.GenerateArgs) map[string]bool {
+	claimed := make(map[string]bool)
+
+	rel := args.Rel
+	if rel == "" || rel == "." {
+		return claimed
+	}
+
+	pathComponents := strings.Split(filepath.ToSlash(rel), "/")
+
+	// Walk up to find the nearest ancestor with lib.rs
+	for ancestorDepth := len(pathComponents) - 1; ancestorDepth >= 0; ancestorDepth-- {
+		var ancestorRel string
+		if ancestorDepth == 0 {
+			ancestorRel = ""
+		} else {
+			ancestorRel = strings.Join(pathComponents[:ancestorDepth], "/")
+		}
+		ancestorDir := filepath.Join(c.RepoRoot, ancestorRel)
+
+		libPath := filepath.Join(ancestorDir, "lib.rs")
+		if _, err := os.Stat(libPath); err == nil {
+			// Found a lib.rs ancestor. Verify the module chain and get claimed files.
+			l.getClaimedFilesFromChain(c, ancestorDir, ancestorRel, pathComponents[ancestorDepth:], args, claimed)
+			return claimed
+		}
+	}
+
+	return claimed
+}
+
+// Verifies there's a valid chain of mod declarations from startDir through each
+// component in pathComponents, and populates the claimed map with files in the target
+// directory that are part of the module tree.
+//
+// Note: This function supports both module styles:
+//   - Old style (all editions): subdir/mod.rs
+//   - Rust 2018+ style: subdir.rs (adjacent file)
+//
+// We accept both unconditionally since Rust 2018+ is the common case. For Rust 2015
+// codebases, this may discover files that use the adjacent style, but those would
+// fail to compile anyway since that style isn't valid in 2015.
+func (l *rustLang) getClaimedFilesFromChain(c *config.Config, startDir, startRel string,
+	pathComponents []string, args *language.GenerateArgs, claimed map[string]bool) {
+
+	if len(pathComponents) == 0 {
+		return
+	}
+
+	// We track two directories separately:
+	// - parseDir: where the current module file lives (for parsing)
+	// - childDir: where child modules of the current file live (for searching)
+	//
+	// For mod.rs style, these are the same (file and children in same directory).
+	// For Rust 2018+ adjacent style, they differ: the file is in the parent
+	// directory, but its children are in a subdirectory.
+	parseDir := startDir
+	childDir := startDir
+	currentFile := "lib.rs"
+
+	for i, component := range pathComponents {
+		parseArgs := &language.GenerateArgs{
+			Config: args.Config,
+			Dir:    parseDir,
+			Rel:    "", // Not used for parsing
+		}
+
+		response := l.parseFile(c, currentFile, parseArgs)
+		if response == nil {
+			return
+		}
+
+		// Check if this file declares `mod <component>;`
+		found := false
+		for _, externMod := range response.ExternMods {
+			if externMod == component {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return
+		}
+
+		// If this is the last component, we've reached the target directory
+		if i == len(pathComponents)-1 {
+			// Check for mod.rs style (old) or adjacent component.rs style (Rust 2018+)
+			targetDir := filepath.Join(childDir, component)
+			modRsPath := filepath.Join(targetDir, "mod.rs")
+			adjacentModPath := filepath.Join(childDir, component+".rs")
+
+			if _, err := os.Stat(modRsPath); err == nil {
+				// Old style: component/mod.rs is the module file
+				claimed["mod.rs"] = true
+				l.claimDeclaredSubmodules(c, targetDir, "mod.rs", claimed)
+			} else if _, err := os.Stat(adjacentModPath); err == nil {
+				// Rust 2018+ style: component.rs (in parent dir) is the module file,
+				// but its submodules live in component/ directory
+				l.claimDeclaredSubmodules(c, targetDir, adjacentModPath, claimed)
+			}
+			return
+		}
+
+		// For intermediate directories, check both module styles
+		modRsPath := filepath.Join(childDir, component, "mod.rs")
+		adjacentModPath := filepath.Join(childDir, component+".rs")
+
+		if _, err := os.Stat(modRsPath); err == nil {
+			// Old style: component/mod.rs
+			// File and its children are both in the subdirectory
+			parseDir = filepath.Join(childDir, component)
+			childDir = parseDir
+			currentFile = "mod.rs"
+		} else if _, err := os.Stat(adjacentModPath); err == nil {
+			// Rust 2018+ style: component.rs is adjacent to component/ directory
+			// File stays in childDir, but its children are in component/
+			parseDir = childDir
+			currentFile = component + ".rs"
+			childDir = filepath.Join(childDir, component)
+		} else {
+			// Neither exists, chain is broken
+			return
+		}
+	}
+}
+
+// claimDeclaredSubmodules parses a module file and claims any .rs files in targetDir
+// that it declares via `mod` statements. The moduleFile can be either:
+// - A filename relative to targetDir (e.g., "mod.rs" for old style)
+// - An absolute path (e.g., "/path/to/subdir.rs" for Rust 2018+ style)
+func (l *rustLang) claimDeclaredSubmodules(c *config.Config, targetDir, moduleFile string, claimed map[string]bool) {
+	var parseDir, parseFile string
+
+	if filepath.IsAbs(moduleFile) {
+		parseDir = filepath.Dir(moduleFile)
+		parseFile = filepath.Base(moduleFile)
+	} else {
+		parseDir = targetDir
+		parseFile = moduleFile
+	}
+
+	parseArgs := &language.GenerateArgs{
+		Config: c,
+		Dir:    parseDir,
+		Rel:    "", // Not used for parsing
+	}
+	response := l.parseFile(c, parseFile, parseArgs)
+	if response != nil {
+		for _, externMod := range response.ExternMods {
+			// Check if this submodule is an adjacent file in targetDir
+			adjacentFile := externMod + ".rs"
+			adjacentPath := filepath.Join(targetDir, adjacentFile)
+			if _, err := os.Stat(adjacentPath); err == nil {
+				claimed[adjacentFile] = true
+			}
+		}
+	}
 }

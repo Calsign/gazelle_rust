@@ -1,0 +1,11 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_test(
+    name = "standalone_test",
+    srcs = ["standalone_test.rs"],
+)
+
+rust_library(
+    name = "util",
+    srcs = ["util.rs"],
+)
