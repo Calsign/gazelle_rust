@@ -139,6 +139,10 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 	// map of crate test rules; key is the non-rust_test rule name that each one refers to
 	testRules := make(map[string]*rule.Rule)
 
+	// Shared map for module discovery memoization, to avoid re-parsing the same files when
+	// discoverModule is called multiple times.
+	importsResponses := map[string]*pb.RustImportsResponse{}
+
 	// Discover modules claimed by lib.rs crate roots before processing new files.
 	// This prevents creating standalone rules for files that are modules of a lib.rs crate.
 	filesInCrates := map[string]bool{}
@@ -152,7 +156,6 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 	// Then discover modules claimed by lib.rs crate roots in THIS directory.
 	for _, file := range args.RegularFiles {
 		if strings.HasSuffix(file, ".rs") && filepath.Base(file) == "lib.rs" {
-			importsResponses := map[string]*pb.RustImportsResponse{}
 			l.discoverModule(args.Config, file, &args, &importsResponses, true)
 			for source := range importsResponses {
 				filesInCrates[source] = true
@@ -214,7 +217,6 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 
 				if isLibCrate && crateRoot != "" {
 					// For lib.rs crates, re-discover all modules
-					importsResponses := map[string]*pb.RustImportsResponse{}
 					l.discoverModule(args.Config, crateRoot, &args, &importsResponses, true)
 					for source, sourceResponse := range importsResponses {
 						filesInExistingRules[source] = true
@@ -243,7 +245,7 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 					}
 				}
 
-				if len(validSrcs) > 0 {
+				if existingRule.Attr("srcs") != nil {
 					rule.SetAttr("srcs", validSrcs)
 				}
 
@@ -279,7 +281,6 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 
 			// For lib.rs crate roots, discover modules and collect all srcs
 			if filename == "lib.rs" {
-				importsResponses := map[string]*pb.RustImportsResponse{}
 				l.discoverModule(args.Config, file, &args, &importsResponses, true)
 				srcs = []string{}
 				responses = []*pb.RustImportsResponse{}
@@ -658,6 +659,14 @@ func (l *rustLang) getFilesClaimedByParent(c *config.Config, args *language.Gene
 // Verifies there's a valid chain of mod declarations from startDir through each
 // component in pathComponents, and populates the claimed map with files in the target
 // directory that are part of the module tree.
+//
+// Note: This function supports both module styles:
+//   - Old style (all editions): subdir/mod.rs
+//   - Rust 2018+ style: subdir.rs (adjacent file)
+//
+// We accept both unconditionally since Rust 2018+ is the common case. For Rust 2015
+// codebases, this may discover files that use the adjacent style, but those would
+// fail to compile anyway since that style isn't valid in 2015.
 func (l *rustLang) getClaimedFilesFromChain(c *config.Config, startDir, startRel string,
 	pathComponents []string, args *language.GenerateArgs, claimed map[string]bool) {
 
@@ -665,15 +674,22 @@ func (l *rustLang) getClaimedFilesFromChain(c *config.Config, startDir, startRel
 		return
 	}
 
-	currentDir := startDir
-	currentRel := startRel
+	// We track two directories separately:
+	// - parseDir: where the current module file lives (for parsing)
+	// - childDir: where child modules of the current file live (for searching)
+	//
+	// For mod.rs style, these are the same (file and children in same directory).
+	// For Rust 2018+ adjacent style, they differ: the file is in the parent
+	// directory, but its children are in a subdirectory.
+	parseDir := startDir
+	childDir := startDir
 	currentFile := "lib.rs"
 
 	for i, component := range pathComponents {
 		parseArgs := &language.GenerateArgs{
 			Config: args.Config,
-			Dir:    currentDir,
-			Rel:    currentRel,
+			Dir:    parseDir,
+			Rel:    "", // Not used for parsing
 		}
 
 		response := l.parseFile(c, currentFile, parseArgs)
@@ -697,10 +713,9 @@ func (l *rustLang) getClaimedFilesFromChain(c *config.Config, startDir, startRel
 		// If this is the last component, we've reached the target directory
 		if i == len(pathComponents)-1 {
 			// Check for mod.rs style (old) or adjacent component.rs style (Rust 2018+)
-			// We accept both without requiring edition configuration.
-			targetDir := filepath.Join(currentDir, component)
+			targetDir := filepath.Join(childDir, component)
 			modRsPath := filepath.Join(targetDir, "mod.rs")
-			adjacentModPath := filepath.Join(currentDir, component+".rs")
+			adjacentModPath := filepath.Join(childDir, component+".rs")
 
 			if _, err := os.Stat(modRsPath); err == nil {
 				// Old style: component/mod.rs is the module file
@@ -715,21 +730,21 @@ func (l *rustLang) getClaimedFilesFromChain(c *config.Config, startDir, startRel
 		}
 
 		// For intermediate directories, check both module styles
-		modRsPath := filepath.Join(currentDir, component, "mod.rs")
-		adjacentModPath := filepath.Join(currentDir, component+".rs")
+		modRsPath := filepath.Join(childDir, component, "mod.rs")
+		adjacentModPath := filepath.Join(childDir, component+".rs")
 
 		if _, err := os.Stat(modRsPath); err == nil {
 			// Old style: component/mod.rs
-			currentDir = filepath.Join(currentDir, component)
-			currentRel = path.Join(currentRel, component)
+			// File and its children are both in the subdirectory
+			parseDir = filepath.Join(childDir, component)
+			childDir = parseDir
 			currentFile = "mod.rs"
 		} else if _, err := os.Stat(adjacentModPath); err == nil {
-			// Rust 2018+ style: component.rs (stays in same directory for parsing)
+			// Rust 2018+ style: component.rs is adjacent to component/ directory
+			// File stays in childDir, but its children are in component/
+			parseDir = childDir
 			currentFile = component + ".rs"
-			// Note: for next iteration, we still descend into the component directory
-			// because that's where submodules live
-			currentDir = filepath.Join(currentDir, component)
-			currentRel = path.Join(currentRel, component)
+			childDir = filepath.Join(childDir, component)
 		} else {
 			// Neither exists, chain is broken
 			return
