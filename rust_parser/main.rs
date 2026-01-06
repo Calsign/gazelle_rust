@@ -22,7 +22,8 @@ enum Args {
 fn handle_rust_imports_request(
     request: RustImportsRequest,
 ) -> Result<RustImportsResponse, Box<dyn Error>> {
-    let rust_imports = parser::parse_imports(PathBuf::from(request.file_path));
+    let rust_imports =
+        parser::parse_imports(PathBuf::from(request.file_path), &request.enabled_features);
 
     let mut response = RustImportsResponse::default();
     match rust_imports {
@@ -88,23 +89,38 @@ fn handle_cargo_toml_request(
     let mut manifest = cargo_toml::Manifest::from_path(&request.file_path)?;
     manifest.complete_from_path(&PathBuf::from(&request.file_path))?;
 
-    let name = manifest.package.map(|p| p.name).unwrap_or_default();
-    let library = manifest.lib.map(build_crate_info);
-    let binaries = manifest.bin.into_iter().map(build_crate_info).collect();
-    let tests = manifest.test.into_iter().map(build_crate_info).collect();
-    let benches = manifest.bench.into_iter().map(build_crate_info).collect();
-    let examples = manifest.example.into_iter().map(build_crate_info).collect();
-
-    Ok(CargoTomlResponse {
+    let mut response = CargoTomlResponse {
         success: true,
-        name,
-        library,
-        binaries,
-        tests,
-        benches,
-        examples,
-        error_msg: String::new(),
-    })
+        ..Default::default()
+    };
+
+    if let Some(ref package) = manifest.package {
+        response.name = package.name.clone();
+        let feature_resolver = cargo_toml::features::Resolver::new();
+        let features_hmap = feature_resolver.parse(&manifest).features;
+        let default_features_set = features_hmap
+            .get("default")
+            .map(|f| f.enables_features.clone())
+            .unwrap_or_default();
+        let default_features: Vec<String> =
+            default_features_set.iter().map(|x| x.to_string()).collect();
+        let non_default_features: Vec<String> = features_hmap
+            .values()
+            .map(|feature| feature.key)
+            .filter(|k| !default_features_set.contains(k))
+            .map(|x| x.to_string())
+            .collect();
+        response.default_features = default_features;
+        response.non_default_features = non_default_features;
+    }
+
+    response.library = manifest.lib.map(build_crate_info);
+    response.binaries = manifest.bin.into_iter().map(build_crate_info).collect();
+    response.tests = manifest.test.into_iter().map(build_crate_info).collect();
+    response.benches = manifest.bench.into_iter().map(build_crate_info).collect();
+    response.examples = manifest.example.into_iter().map(build_crate_info).collect();
+
+    Ok(response)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -112,7 +128,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match args {
         Args::OneShot { path } => {
-            let mut rust_imports = parser::parse_imports(path)?;
+            let mut rust_imports = parser::parse_imports(path, &[])?;
             rust_imports.imports.sort();
 
             println!("Imports:");

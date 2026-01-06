@@ -24,7 +24,10 @@ pub struct Hints {
     pub has_proc_macro: bool,
 }
 
-pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
+pub fn parse_imports(
+    path: PathBuf,
+    enabled_features: &[String],
+) -> Result<RustImports, Box<dyn Error>> {
     // TODO: stream from the file instead of loading it all into memory?
     let mut file = match File::open(&path) {
         Err(err) => {
@@ -40,12 +43,15 @@ pub fn parse_imports(path: PathBuf) -> Result<RustImports, Box<dyn Error>> {
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    parse_imports_from_str(&contents)
+    parse_imports_from_str(&contents, enabled_features)
 }
 
-pub fn parse_imports_from_str(contents: &str) -> Result<RustImports, Box<dyn Error>> {
+pub fn parse_imports_from_str(
+    contents: &str,
+    enabled_features: &[String],
+) -> Result<RustImports, Box<dyn Error>> {
     let ast = parse_file(contents)?;
-    let mut visitor = AstVisitor::default();
+    let mut visitor = AstVisitor::new(enabled_features);
     visitor.visit_file(&ast);
 
     let mut root_scope = visitor.mod_stack.pop_back().expect("no root scope");
@@ -164,18 +170,22 @@ struct AstVisitor<'ast> {
     /// mods that are disallowed from being added to the current scope; this is currently only used
     /// for a hack, see below
     mod_denylist: HashSet<Ident<'ast>>,
+    /// Enabled features
+    enabled_features: HashSet<String>,
 }
 
-impl Default for AstVisitor<'_> {
-    fn default() -> Self {
+impl AstVisitor<'_> {
+    fn new(enabled_features: &[String]) -> Self {
         let mut mod_stack = VecDeque::new();
         mod_stack.push_back(Scope::default());
+
         Self {
             mod_stack,
             scope_mods: HashSet::default(),
             hints: Hints::default(),
             extern_mods: Vec::default(),
             mod_denylist: HashSet::new(),
+            enabled_features: enabled_features.iter().cloned().collect(),
         }
     }
 }
@@ -223,6 +233,68 @@ impl DirectiveSet {
 }
 
 impl<'ast> AstVisitor<'ast> {
+    fn cfg_enabled(&self, attrs: &[syn::Attribute]) -> bool {
+        for attr in attrs {
+            if let syn::Meta::List(list) = &attr.meta {
+                if list.path.is_ident("cfg") {
+                    if let Ok(meta) = attr.parse_args::<syn::Meta>() {
+                        if !self.eval_cfg_meta(&meta) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        true
+    }
+
+    fn eval_cfg_meta(&self, meta: &syn::Meta) -> bool {
+        match meta {
+            syn::Meta::Path(path) => {
+                if let Some(ident) = path.get_ident() {
+                    ident == "test"
+                } else {
+                    true
+                }
+            }
+
+            syn::Meta::NameValue(nv) => {
+                if nv.path.is_ident("feature") {
+                    if let syn::Expr::Lit(expr_lit) = &nv.value {
+                        if let syn::Lit::Str(lit) = &expr_lit.lit {
+                            return self.enabled_features.contains(lit.value().as_str());
+                        }
+                    }
+                }
+                true
+            }
+
+            syn::Meta::List(list) => {
+                if list.path.is_ident("any") {
+                    list.parse_args_with(Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated)
+                        .map(|args| args.iter().any(|m| self.eval_cfg_meta(m)))
+                        .unwrap_or(true)
+                } else if list.path.is_ident("all") {
+                    list.parse_args_with(Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated)
+                        .map(|args| args.iter().all(|m| self.eval_cfg_meta(m)))
+                        .unwrap_or(true)
+                } else if list.path.is_ident("not") {
+                    list.parse_args_with(Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated)
+                        .map(|args| {
+                            if args.len() == 1 {
+                                !self.eval_cfg_meta(&args[0])
+                            } else {
+                                true
+                            }
+                        })
+                        .unwrap_or(true)
+                } else {
+                    true
+                }
+            }
+        }
+    }
+
     fn add_import<I: Into<Ident<'ast>>>(&mut self, ident: I) {
         let ident = ident.into();
 
@@ -369,6 +441,10 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     }
 
     fn visit_item_use(&mut self, node: &'ast syn::ItemUse) {
+        if !self.cfg_enabled(&node.attrs) {
+            return;
+        }
+
         let directives = self.parse_directives(&node.attrs);
 
         let mut imports = HashSet::new();
@@ -410,6 +486,10 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     }
 
     fn visit_item_extern_crate(&mut self, node: &'ast syn::ItemExternCrate) {
+        if !self.cfg_enabled(&node.attrs) {
+            return;
+        }
+
         let directives = self.parse_directives(&node.attrs);
         if !directives.should_ignore() {
             self.add_import(&node.ident);
@@ -423,6 +503,10 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     }
 
     fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
+        if !self.cfg_enabled(&node.attrs) {
+            return;
+        }
+
         let mut is_test_only = false;
 
         // parse #[cfg(test)]
@@ -460,6 +544,10 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     }
 
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        if !self.cfg_enabled(&node.attrs) {
+            return;
+        }
+
         let mut is_test_only = false;
 
         if self.is_root_scope() && node.sig.ident == "main" {
@@ -503,6 +591,10 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     }
 
     fn visit_item_macro(&mut self, node: &'ast syn::ItemMacro) {
+        if !self.cfg_enabled(&node.attrs) {
+            return;
+        }
+
         if let Some(macro_ident) = node.mac.path.get_ident() {
             if macro_ident == "macro_rules" {
                 if let Some(new_ident) = &node.ident {
