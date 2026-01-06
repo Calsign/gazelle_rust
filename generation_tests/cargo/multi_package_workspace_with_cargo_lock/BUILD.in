@@ -1,3 +1,4 @@
 # gazelle:rust_mode generate_from_cargo
 # gazelle:rust_cargo_lockfile Cargo.lock
 # gazelle:rust_crates_prefix @crates//:
+# gazelle:rust_feature foo true

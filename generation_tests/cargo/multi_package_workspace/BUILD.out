@@ -1,1 +1,2 @@
 # gazelle:rust_mode generate_from_cargo
+# gazelle:rust_feature foo true

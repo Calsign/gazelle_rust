@@ -3,6 +3,7 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
 # gazelle:rust_mode generate_from_cargo
 # gazelle:rust_feature foo true
 # gazelle:rust_feature bar true
+# gazelle:rust_feature baz false
 
 rust_library(
     name = "features_lib",

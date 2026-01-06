@@ -45,10 +45,12 @@ var (
 	// Remove an external crate from the "unused crates" warning.
 	allowUnusedCrateDirective string = "rust_allow_unused_crate"
 
-	// Enable or disable Rust features.
+	// Enable or disable Cargo features when new generating new targets in
+	// generate_from_cargo mode.
 	rustFeatureDirective string = "rust_feature"
 
-	// Enable or disable default features.
+	// Enable or disable default Cargo features when generating new targets
+	// in generate_from_cargo mode.
 	defaultFeaturesDirective string = "rust_default_features"
 )
 

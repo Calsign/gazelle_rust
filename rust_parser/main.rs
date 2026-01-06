@@ -128,7 +128,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match args {
         Args::OneShot { path } => {
-            let mut rust_imports = parser::parse_imports(path, &Vec::new())?;
+            let mut rust_imports = parser::parse_imports(path, &[])?;
             rust_imports.imports.sort();
 
             println!("Imports:");

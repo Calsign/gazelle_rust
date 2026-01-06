@@ -238,7 +238,9 @@ impl<'ast> AstVisitor<'ast> {
             if let syn::Meta::List(list) = &attr.meta {
                 if list.path.is_ident("cfg") {
                     if let Ok(meta) = attr.parse_args::<syn::Meta>() {
-                        return self.eval_cfg_meta(&meta);
+                        if !self.eval_cfg_meta(&meta) {
+                            return false;
+                        }
                     }
                 }
             }
@@ -264,18 +266,18 @@ impl<'ast> AstVisitor<'ast> {
                         }
                     }
                 }
-                false
+                true
             }
 
             syn::Meta::List(list) => {
                 if list.path.is_ident("any") {
                     list.parse_args_with(Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated)
                         .map(|args| args.iter().any(|m| self.eval_cfg_meta(m)))
-                        .unwrap_or(false)
+                        .unwrap_or(true)
                 } else if list.path.is_ident("all") {
                     list.parse_args_with(Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated)
                         .map(|args| args.iter().all(|m| self.eval_cfg_meta(m)))
-                        .unwrap_or(false)
+                        .unwrap_or(true)
                 } else if list.path.is_ident("not") {
                     list.parse_args_with(Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated)
                         .map(|args| {
