@@ -41,6 +41,7 @@ lazy_static::lazy_static! {
                 "test_cfg_attr_macro_on_fn",
                 "test_bare_use_group1",
                 "test_bare_use_group2",
+                "type",
             ],
             expected_test_imports: vec![],
             expected_extern_mods: vec!["extern_mod"],
