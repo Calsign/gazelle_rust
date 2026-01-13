@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 
+use syn::ext::IdentExt;
 use syn::parse_file;
 use syn::punctuated::Punctuated;
 use syn::visit::{self, Visit};
@@ -124,8 +125,8 @@ impl Ident<'_> {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         match self {
-            Self::Ref(ident) => ident.to_string(),
-            Self::Owned(ident) => ident.to_string(),
+            Self::Ref(ident) => ident.unraw().to_string(),
+            Self::Owned(ident) => ident.unraw().to_string(),
         }
     }
 }
@@ -534,7 +535,7 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
 
         if self.is_root_scope() && node.content.is_none() {
             // this mod is defined in a different file
-            self.extern_mods.push(node.ident.to_string());
+            self.extern_mods.push(node.ident.unraw().to_string());
         }
 
         self.add_mod(&node.ident);

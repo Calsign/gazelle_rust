@@ -5,6 +5,7 @@ use test_use_2::Something;
 use test_use_3::*;
 use test_use_4 as outer_alias;
 use test_use_5::self_use::{self, x};
+use r#type;
 
 #[gazelle::ignore]
 use ignored_dep::ignored_mod;
