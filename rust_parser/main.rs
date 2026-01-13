@@ -22,8 +22,11 @@ enum Args {
 fn handle_rust_imports_request(
     request: RustImportsRequest,
 ) -> Result<RustImportsResponse, Box<dyn Error>> {
-    let rust_imports =
-        parser::parse_imports(PathBuf::from(request.file_path), &request.enabled_features);
+    let rust_imports = parser::parse_imports(
+        PathBuf::from(request.absolute_path),
+        PathBuf::from(request.relative_path),
+        &request.enabled_features,
+    );
 
     let mut response = RustImportsResponse::default();
     match rust_imports {
@@ -39,6 +42,7 @@ fn handle_rust_imports_request(
             response.imports = rust_imports.imports;
             response.test_imports = rust_imports.test_imports;
             response.extern_mods = rust_imports.extern_mods;
+            response.compile_data = rust_imports.compile_data;
         }
         Err(err) => {
             // Don't crash gazelle if we encounter an error, instead bubble it up so that we can
@@ -132,7 +136,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match args {
         Args::OneShot { path } => {
-            let mut rust_imports = parser::parse_imports(path, &[])?;
+            let mut rust_imports = parser::parse_imports(path, PathBuf::new(), &[])?;
             rust_imports.imports.sort();
 
             println!("Imports:");

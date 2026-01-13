@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -263,7 +264,12 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 }
 
 func (l *rustLang) parseFile(c *config.Config, file string, enabledFeatures []string, args *language.GenerateArgs) *pb.RustImportsResponse {
-	request := &pb.RustImportsRequest{FilePath: path.Join(args.Dir, file), EnabledFeatures: enabledFeatures}
+	request := &pb.RustImportsRequest{
+		AbsolutePath:    path.Join(args.Dir, file),
+		RelativePath:    file,
+		EnabledFeatures: enabledFeatures,
+	}
+
 	response, err := l.Parser.Parse(request)
 	if err != nil {
 		l.Log(c, logFatal, file, "failed to parse %s: %v", file, err)
@@ -315,6 +321,7 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 						}
 					}
 				}
+				sort.Strings(enabledFeatures)
 
 				if response.Library != nil {
 					// if there is a main.rs next to lib.rs, they will both have the same crate
@@ -431,10 +438,14 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 	}
 
 	srcs := []string{}
+	compile_data := map[string]bool{"Cargo.toml": true}
 	responses := []*pb.RustImportsResponse{}
 
 	for src, response := range importsResponses {
 		srcs = append(srcs, src)
+		for _, f := range response.CompileData {
+			compile_data[f] = true
+		}
 		if response != nil {
 			responses = append(responses, response)
 		}
@@ -446,7 +457,7 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 		newRule.SetAttr("srcs", srcs)
 	}
 	newRule.SetAttr("visibility", []string{"//visibility:public"})
-	newRule.SetAttr("compile_data", []string{"Cargo.toml"})
+	newRule.SetAttr("compile_data", setToSortedVector(compile_data))
 
 	if targetName != crateName {
 		newRule.SetAttr("crate_name", crateName)
@@ -494,10 +505,14 @@ func (l *rustLang) generateBuildScript(c *config.Config, args *language.Generate
 	l.discoverModule(c, "build.rs", enabledFeatures, args, &importsResponses, true)
 
 	srcs := []string{}
+	compile_data := map[string]bool{"Cargo.toml": true}
 	responses := []*pb.RustImportsResponse{}
 
 	for src, response := range importsResponses {
 		srcs = append(srcs, src)
+		for _, f := range response.CompileData {
+			compile_data[f] = true
+		}
 		if response != nil {
 			responses = append(responses, response)
 		}
@@ -506,7 +521,7 @@ func (l *rustLang) generateBuildScript(c *config.Config, args *language.Generate
 	newRule := rule.NewRule("cargo_build_script", "build_script")
 	newRule.SetAttr("srcs", srcs)
 	newRule.SetAttr("visibility", []string{"//visibility:public"})
-	newRule.SetAttr("compile_data", []string{"Cargo.toml"})
+	newRule.SetAttr("compile_data", setToSortedVector(compile_data))
 	newRule.SetAttr("crate_root", "build.rs")
 
 	cfg := l.GetConfig(args.Config)
@@ -588,4 +603,13 @@ func fileExists(path string, args *language.GenerateArgs) bool {
 	fullPath := filepath.Join(args.Dir, path)
 	_, err := os.Stat(fullPath)
 	return err == nil
+}
+
+func setToSortedVector(src map[string]bool) []string {
+	result := []string{}
+	for key := range src {
+		result = append(result, key)
+	}
+	sort.Strings(result)
+	return result
 }
