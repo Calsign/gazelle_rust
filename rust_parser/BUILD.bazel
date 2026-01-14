@@ -6,7 +6,10 @@ rust_library(
     name = "parser",
     srcs = ["parser.rs"],
     visibility = [":__subpackages__"],
-    deps = ["@crates//:syn"],
+    deps = [
+        "@crates//:proc-macro2",
+        "@crates//:syn",
+    ],
 )
 
 rust_library(

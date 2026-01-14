@@ -46,7 +46,10 @@ lazy_static::lazy_static! {
             ],
             expected_test_imports: vec![],
             expected_extern_mods: vec!["extern_mod"],
-            expected_compile_data: vec!["file1.txt"],
+            expected_compile_data: vec![
+                "file1.txt",
+                "file2.txt",
+            ],
         },
         TestCase {
             filename: "test_only.rs",
@@ -88,6 +91,29 @@ lazy_static::lazy_static! {
                 "extern_mod_2",
             ],
             expected_compile_data: vec![],
+        },
+        TestCase {
+            filename: "macros.rs",
+            enabled_features: vec![],
+            expected_imports: vec![
+                "foo1",
+                "foo2",
+                "bar1",
+                "bar2",
+                "nested1",
+                "nested2",
+            ],
+            expected_test_imports: vec![],
+            expected_extern_mods: vec![],
+            expected_compile_data: vec![
+                "file1.txt",
+                "file2.txt",
+                "file3.txt",
+                "file4.txt",
+                "file5.txt",
+                "file6.txt",
+                "file7.txt",
+            ],
         },
     ];
 }
