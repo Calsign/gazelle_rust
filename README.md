@@ -136,8 +136,7 @@ is already in scope.
 This approach is fairly robust. Please see [`rust_parser/parser.rs`](./rust_parser/parser.rs) for
 implementation details and the [parser
 tests](https://github.com/Calsign/gazelle_rust/tree/main/rust_parser/test_data) for the range of
-cases covered. The only known case that is not handled is paths in macros like `println!`, which is
-quite tricky. (Derive macros are handled properly.)
+cases covered.
 
 For each dependency, gazelle\_rust identifies the crate in the project (or crate universe
 dependency) providing that crate name. gazelle\_rust raises an error if the crate could not be found

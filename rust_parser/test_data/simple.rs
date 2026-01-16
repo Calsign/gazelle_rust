@@ -36,6 +36,8 @@ fn main() {
 
     my_function(include_str!("file1.txt"));
 
+    include_str!("file2.txt");
+
     use crate::foobar;
 
     #[gazelle::ignore]
