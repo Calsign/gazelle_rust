@@ -9,8 +9,9 @@ message Request {
 }
 
 message RustImportsRequest {
-    string file_path = 1;
-    repeated string enabled_features = 2;
+    string absolute_path = 1;
+    string relative_path = 2;
+    repeated string enabled_features = 3;
 }
 
 /** Extra information about the source file, used to infer rule kind (e.g. binary vs. library) when
@@ -31,8 +32,9 @@ message RustImportsResponse {
     repeated string imports = 2;
     repeated string test_imports = 3;
     repeated string extern_mods = 4;
-    bool success = 5;
-    string error_msg = 6;
+    repeated string compile_data = 5;
+    bool success = 6;
+    string error_msg = 7;
 }
 
 message LockfileCratesRequest {

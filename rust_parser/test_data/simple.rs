@@ -34,6 +34,8 @@ fn main() {
 
     self_use::something();
 
+    my_function(include_str!("file1.txt"));
+
     use crate::foobar;
 
     #[gazelle::ignore]

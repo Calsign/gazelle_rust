@@ -4,7 +4,7 @@ use std::collections::{HashSet, VecDeque};
 use std::error::Error;
 use std::fs::File;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use syn::ext::IdentExt;
 use syn::parse_file;
@@ -16,6 +16,7 @@ pub struct RustImports {
     pub imports: Vec<String>,
     pub test_imports: Vec<String>,
     pub extern_mods: Vec<String>,
+    pub compile_data: Vec<String>,
 }
 
 #[derive(Debug, Default)]
@@ -26,15 +27,16 @@ pub struct Hints {
 }
 
 pub fn parse_imports(
-    path: PathBuf,
+    absolute_path: PathBuf,
+    relative_path: PathBuf,
     enabled_features: &[String],
 ) -> Result<RustImports, Box<dyn Error>> {
     // TODO: stream from the file instead of loading it all into memory?
-    let mut file = match File::open(&path) {
+    let mut file = match File::open(&absolute_path) {
         Err(err) => {
             eprintln!(
                 "Could not open file {}: {}",
-                path.to_str().unwrap_or("<utf-8 decode error>"),
+                absolute_path.to_str().unwrap_or("<utf-8 decode error>"),
                 err,
             );
             std::process::exit(1);
@@ -44,15 +46,16 @@ pub fn parse_imports(
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    parse_imports_from_str(&contents, enabled_features)
+    parse_imports_from_str(&contents, enabled_features, relative_path)
 }
 
 pub fn parse_imports_from_str(
     contents: &str,
     enabled_features: &[String],
+    path: PathBuf,
 ) -> Result<RustImports, Box<dyn Error>> {
     let ast = parse_file(contents)?;
-    let mut visitor = AstVisitor::new(enabled_features);
+    let mut visitor = AstVisitor::new(enabled_features, path);
     visitor.visit_file(&ast);
 
     let mut root_scope = visitor.mod_stack.pop_back().expect("no root scope");
@@ -70,7 +73,8 @@ pub fn parse_imports_from_str(
         hints: visitor.hints,
         imports: filter_imports(root_scope.imports),
         test_imports: filter_imports(root_scope.test_imports),
-        extern_mods: visitor.extern_mods,
+        extern_mods: visitor.extern_mods.into_iter().collect(),
+        compile_data: visitor.compile_data.into_iter().collect(),
     })
 }
 
@@ -160,6 +164,10 @@ impl Scope<'_> {
 
 #[derive(Debug)]
 struct AstVisitor<'ast> {
+    /// The relative path from the root of Bazel package to the directory that contains the file we
+    /// are parsing. This is used to resolve location of files that are included with include_str!
+    /// and include_bytes!.
+    containing_dir: PathBuf,
     /// stack of mods in scope
     mod_stack: VecDeque<Scope<'ast>>,
     /// all mods that are currently in scope (including parent scopes)
@@ -167,26 +175,32 @@ struct AstVisitor<'ast> {
     /// collected hints
     hints: Hints,
     /// bare mods defined in external files
-    extern_mods: Vec<String>,
+    extern_mods: HashSet<String>,
     /// mods that are disallowed from being added to the current scope; this is currently only used
     /// for a hack, see below
     mod_denylist: HashSet<Ident<'ast>>,
     /// Enabled features
     enabled_features: HashSet<String>,
+    /// Files that are included via include_str! and include_bytes! macros.
+    compile_data: HashSet<String>,
 }
 
 impl AstVisitor<'_> {
-    fn new(enabled_features: &[String]) -> Self {
+    fn new(enabled_features: &[String], path: PathBuf) -> Self {
         let mut mod_stack = VecDeque::new();
         mod_stack.push_back(Scope::default());
 
+        let containing_dir = path.parent().unwrap_or_else(|| Path::new("")).to_path_buf();
+
         Self {
+            containing_dir,
             mod_stack,
             scope_mods: HashSet::default(),
             hints: Hints::default(),
-            extern_mods: Vec::default(),
+            extern_mods: HashSet::new(),
             mod_denylist: HashSet::new(),
             enabled_features: enabled_features.iter().cloned().collect(),
+            compile_data: HashSet::new(),
         }
     }
 }
@@ -535,7 +549,7 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
 
         if self.is_root_scope() && node.content.is_none() {
             // this mod is defined in a different file
-            self.extern_mods.push(node.ident.unraw().to_string());
+            self.extern_mods.insert(node.ident.unraw().to_string());
         }
 
         self.add_mod(&node.ident);
@@ -605,6 +619,41 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         }
         visit::visit_item_macro(self, node);
     }
+
+    fn visit_expr_macro(&mut self, node: &'ast syn::ExprMacro) {
+        let macro_ident = node.mac.path.get_ident();
+
+        if let Some(ident) = macro_ident {
+            if ident == "include_str" || ident == "include_bytes" {
+                if self.is_ignored_scope() {
+                    return;
+                }
+
+                if let Ok(syn::Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Str(lit),
+                    ..
+                })) = syn::parse2::<syn::Expr>(node.mac.tokens.clone())
+                {
+                    let included_path = PathBuf::from(lit.value());
+
+                    if included_path.is_absolute() {
+                        panic!(
+                            "included paths must not be absolute: {}",
+                            included_path.display()
+                        )
+                    } else {
+                        let combined = self.containing_dir.join(included_path);
+                        match normalize_path(&combined).to_str() {
+                            None => panic!("Invalid unicode in the path: {}", combined.display()),
+                            Some(x) => self.compile_data.insert(x.to_string()),
+                        };
+                    }
+                }
+            }
+        }
+
+        visit::visit_expr_macro(self, node);
+    }
 }
 
 fn parse_use_imports<'ast>(use_tree: &'ast syn::UseTree, imports: &mut HashSet<Ident<'ast>>) {
@@ -622,4 +671,30 @@ fn parse_use_imports<'ast>(use_tree: &'ast syn::UseTree, imports: &mut HashSet<I
         }
         _ => (),
     }
+}
+
+/// Normalize a path by resolving `.` and `..` without touching the filesystem
+fn normalize_path(path: &Path) -> PathBuf {
+    let mut stack = Vec::new();
+
+    for component in path.components() {
+        match component {
+            std::path::Component::ParentDir => {
+                if let Some(last) = stack.last() {
+                    // Only pop if last is a normal component, not RootDir
+                    if matches!(last, std::path::Component::Normal(_)) {
+                        stack.pop();
+                    } else {
+                        stack.push(component);
+                    }
+                } else {
+                    stack.push(component);
+                }
+            }
+            std::path::Component::CurDir => { /* skip `.` */ }
+            _ => stack.push(component),
+        }
+    }
+
+    stack.iter().collect()
 }

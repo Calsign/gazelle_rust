@@ -10,6 +10,7 @@ struct TestCase {
     expected_imports: Vec<&'static str>,
     expected_test_imports: Vec<&'static str>,
     expected_extern_mods: Vec<&'static str>,
+    expected_compile_data: Vec<&'static str>,
 }
 
 lazy_static::lazy_static! {
@@ -45,6 +46,7 @@ lazy_static::lazy_static! {
             ],
             expected_test_imports: vec![],
             expected_extern_mods: vec!["extern_mod"],
+            expected_compile_data: vec!["file1.txt"],
         },
         TestCase {
             filename: "test_only.rs",
@@ -61,6 +63,7 @@ lazy_static::lazy_static! {
                 "f",
             ],
             expected_extern_mods: vec![],
+            expected_compile_data: vec![],
         },
         TestCase {
             filename: "early_mod.rs",
@@ -68,6 +71,7 @@ lazy_static::lazy_static! {
             expected_imports: vec!["ee"],
             expected_test_imports: vec![],
             expected_extern_mods: vec![],
+            expected_compile_data: vec![],
         },
         TestCase {
             filename: "features.rs",
@@ -83,6 +87,7 @@ lazy_static::lazy_static! {
             expected_extern_mods: vec![
                 "extern_mod_2",
             ],
+            expected_compile_data: vec![],
         },
     ];
 }
@@ -132,7 +137,7 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
             .map(|s| s.to_string())
             .collect();
 
-        let rust_imports = parser::parse_imports(file, &enabled_features)?;
+        let rust_imports = parser::parse_imports(file, PathBuf::new(), &enabled_features)?;
         assert_eq_vecs(
             &rust_imports.imports,
             &test_case
@@ -159,6 +164,15 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>(),
             "extern_modes",
+        );
+        assert_eq_vecs(
+            &rust_imports.compile_data,
+            &test_case
+                .expected_compile_data
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>(),
+            "compile_data",
         );
     }
 

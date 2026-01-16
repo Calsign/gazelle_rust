@@ -1,0 +1,28 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
+
+# gazelle:rust_mode generate_from_cargo
+
+rust_library(
+    name = "basic_lib",
+    srcs = [
+        "src/foobar.rs",
+        "src/lib.rs",
+    ],
+    compile_data = [
+        "Cargo.toml",
+        "src/file1.txt",
+        "src/file2.txt",
+    ],
+    crate_name = "basic",
+    edition = "2021",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "basic",
+    srcs = ["src/main.rs"],
+    compile_data = ["Cargo.toml"],
+    edition = "2021",
+    visibility = ["//visibility:public"],
+    deps = [":basic_lib"],
+)
