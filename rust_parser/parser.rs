@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+use proc_macro2::{TokenStream, TokenTree};
 use syn::ext::IdentExt;
 use syn::parse_file;
 use syn::punctuated::Punctuated;
@@ -19,7 +20,7 @@ pub struct RustImports {
     pub compile_data: Vec<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Hints {
     pub has_main: bool,
     pub has_test: bool,
@@ -133,9 +134,16 @@ impl Ident<'_> {
             Self::Owned(ident) => ident.unraw().to_string(),
         }
     }
+
+    fn into_owned<'a>(self) -> Ident<'a> {
+        match self {
+            Self::Ref(ident) => Ident::Owned(ident.clone()),
+            Self::Owned(ident) => Ident::Owned(ident),
+        }
+    }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct Scope<'ast> {
     /// mods in scope
     mods: HashSet<Ident<'ast>>,
@@ -162,7 +170,7 @@ impl Scope<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct AstVisitor<'ast> {
     /// The relative path from the root of Bazel package to the directory that contains the file we
     /// are parsing. This is used to resolve location of files that are included with include_str!
@@ -436,6 +444,89 @@ impl<'ast> AstVisitor<'ast> {
         }
         directives
     }
+
+    fn visit_macro_tokens(&mut self, tokens: TokenStream) {
+        if tokens.is_empty() {
+            return;
+        }
+
+        // Try parsing as an expression
+        if let Ok(expr) = syn::parse2::<syn::Expr>(tokens.clone()) {
+            self.push_scope(false, false);
+            let mut macro_visitor = self.clone();
+            macro_visitor.visit_expr(&expr);
+            self.copy_from_visitor(macro_visitor);
+            self.pop_scope();
+            return;
+        }
+
+        // Try parsing as a statement
+        if let Ok(stmt) = syn::parse2::<syn::Stmt>(tokens.clone()) {
+            self.push_scope(false, false);
+            let mut macro_visitor = self.clone();
+            macro_visitor.visit_stmt(&stmt);
+            self.copy_from_visitor(macro_visitor);
+            self.pop_scope();
+            return;
+        }
+
+        // Still nothing, we need to use some heuristics in order to select a parseable fragment of
+        // the token stream.
+        if starts_with_ident(&tokens) {
+            // The token stream starts with an identifier but does not parse; it must be a list of
+            // arguments separated by commas. Split it on commas and try parsing each argument
+            // individually. We should only retry if we actually encountered some commas, otherwise
+            // we risk running in an infinite loop.
+            let (fragments, seen_commas) = split_on_commas(tokens);
+            if seen_commas {
+                for fragment in fragments {
+                    self.visit_macro_tokens(fragment);
+                }
+            }
+        } else {
+            // The token stream does not start with an identifier: the parseable part probably comes
+            // later. Strip everything until we hit an identifier and try again.
+            self.visit_macro_tokens(remove_prefix_until_ident(tokens))
+        }
+    }
+
+    fn copy_from_visitor(&mut self, other: AstVisitor<'_>) {
+        self.mod_stack = VecDeque::new();
+        for scope in other.mod_stack {
+            let scope_copy = Scope {
+                mods: scope.mods.into_iter().map(Ident::into_owned).collect(),
+                imports: scope.imports.into_iter().map(Ident::into_owned).collect(),
+                test_imports: scope
+                    .test_imports
+                    .into_iter()
+                    .map(Ident::into_owned)
+                    .collect(),
+                is_test_only: scope.is_test_only,
+                is_ignored: scope.is_ignored,
+            };
+            self.mod_stack.push_back(scope_copy);
+        }
+        for id in other.scope_mods {
+            let id_copy = match id {
+                Ident::Ref(ident) => Ident::Owned((*ident).clone()),
+                Ident::Owned(ident) => Ident::Owned(ident),
+            };
+            self.scope_mods.insert(id_copy);
+        }
+        for id in other.mod_denylist {
+            let id_copy = match id {
+                Ident::Ref(ident) => Ident::Owned((*ident).clone()),
+                Ident::Owned(ident) => Ident::Owned(ident),
+            };
+            self.mod_denylist.insert(id_copy);
+        }
+        self.extern_mods = other.extern_mods;
+        self.compile_data = other.compile_data;
+        self.enabled_features = other.enabled_features;
+        self.hints.has_main = other.hints.has_main;
+        self.hints.has_test = other.hints.has_test;
+        self.hints.has_proc_macro = other.hints.has_proc_macro;
+    }
 }
 
 impl<'ast> Visit<'ast> for AstVisitor<'ast> {
@@ -620,8 +711,8 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         visit::visit_item_macro(self, node);
     }
 
-    fn visit_expr_macro(&mut self, node: &'ast syn::ExprMacro) {
-        let macro_ident = node.mac.path.get_ident();
+    fn visit_macro(&mut self, mac: &'ast syn::Macro) {
+        let macro_ident = mac.path.get_ident();
 
         if let Some(ident) = macro_ident {
             if ident == "include_str" || ident == "include_bytes" {
@@ -632,7 +723,7 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
                 if let Ok(syn::Expr::Lit(syn::ExprLit {
                     lit: syn::Lit::Str(lit),
                     ..
-                })) = syn::parse2::<syn::Expr>(node.mac.tokens.clone())
+                })) = syn::parse2::<syn::Expr>(mac.tokens.clone())
                 {
                     let included_path = PathBuf::from(lit.value());
 
@@ -651,8 +742,8 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
                 }
             }
         }
-
-        visit::visit_expr_macro(self, node);
+        self.visit_macro_tokens(mac.tokens.clone());
+        visit::visit_macro(self, mac);
     }
 }
 
@@ -697,4 +788,48 @@ fn normalize_path(path: &Path) -> PathBuf {
     }
 
     stack.iter().collect()
+}
+
+/// Remove all tokens before the first `Ident`. Return the remaining `TokenStream` starting with
+/// that `Ident`.
+fn remove_prefix_until_ident(ts: TokenStream) -> TokenStream {
+    ts.into_iter()
+        .skip_while(|tt| !matches!(tt, TokenTree::Ident(_)))
+        .collect()
+}
+
+/// Split a `TokenStream` on commas, returning:
+/// - A `Vec` of `TokenStreams` (segments without the commas)
+/// - A bool indicating whether any comma was seen
+fn split_on_commas(ts: TokenStream) -> (Vec<TokenStream>, bool) {
+    let mut result = Vec::new();
+    let mut current = Vec::new();
+    let mut seen_comma = false;
+
+    for tt in ts {
+        match &tt {
+            TokenTree::Punct(punct) if punct.as_char() == ',' => {
+                seen_comma = true;
+                // Push current segment and start a new one
+                result.push(current.into_iter().collect());
+                current = Vec::new();
+            }
+            _ => current.push(tt),
+        }
+    }
+
+    // Push the last segment if any tokens remain
+    if !current.is_empty() || !seen_comma {
+        result.push(current.into_iter().collect());
+    }
+
+    (result, seen_comma)
+}
+
+/// Return true if the given `TokenStream` starts with an `Ident`.
+fn starts_with_ident(ts: &TokenStream) -> bool {
+    ts.clone()
+        .into_iter()
+        .next()
+        .is_some_and(|tt| matches!(tt, TokenTree::Ident(_)))
 }
