@@ -1,3 +1,5 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
 def gofmt_test(name, srcs):
     filegroup_name = "{}/srcs".format(name)
     native.filegroup(
@@ -6,7 +8,7 @@ def gofmt_test(name, srcs):
         tags = ["manual"],
     )
 
-    native.sh_test(
+    sh_test(
         name = name,
         srcs = ["//util:run_gofmt.sh"],
         data = ["@go_default_sdk//:bin/gofmt", filegroup_name],

@@ -1,3 +1,4 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 load("//generation_tests:generation_tests.bzl", "generation_tests")
 
 sh_binary(
