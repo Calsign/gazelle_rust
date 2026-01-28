@@ -78,6 +78,14 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 		ruleData := ruleData.(RuleData)
 		deps := map[label.Label]bool{}
 		procMacroDeps := map[label.Label]bool{}
+		// aliases map: label -> local_name (for renamed dependencies)
+		aliases := map[label.Label]string{}
+
+		// Build reverse lookup: local_name -> package_name
+		localToPackage := make(map[string]string)
+		for packageName, localName := range ruleData.aliases {
+			localToPackage[localName] = packageName
+		}
 
 		var crateName string
 		if ruleData.testedCrate != nil {
@@ -111,31 +119,43 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 					continue
 				}
 
+				// Check if this import is an alias (local_name -> package_name)
+				actualCrate := imp
+				isAlias := false
+				if packageName, ok := localToPackage[imp]; ok {
+					actualCrate = packageName
+					isAlias = true
+				}
+
 				is_proc_macro := false
 
-				label, found := l.resolveCrate(cfg, c, ix, l.Name(), imp, ruleData.parentCrateName, from)
-				if label != nil {
+				resolvedLabel, found := l.resolveCrate(cfg, c, ix, l.Name(), actualCrate, ruleData.parentCrateName, from)
+				if resolvedLabel != nil {
 					is_proc_macro = false
 				}
 				if !found {
-					label, found = l.resolveCrate(cfg, c, ix, procMacroLangName, imp, ruleData.parentCrateName, from)
-					if label != nil {
+					resolvedLabel, found = l.resolveCrate(cfg, c, ix, procMacroLangName, actualCrate, ruleData.parentCrateName, from)
+					if resolvedLabel != nil {
 						is_proc_macro = true
 					}
 				}
 
-				if proc_macro, ok := cfg.ProcMacroOverrides[imp]; ok {
+				if proc_macro, ok := cfg.ProcMacroOverrides[actualCrate]; ok {
 					// user-defined override
 					// NOTE: well-known overrides are handled in lockfile_crates.go
 					is_proc_macro = proc_macro
 				}
 
 				if found {
-					if label != nil {
+					if resolvedLabel != nil {
 						if is_proc_macro {
-							procMacroDeps[*label] = true
+							procMacroDeps[*resolvedLabel] = true
 						} else {
-							deps[*label] = true
+							deps[*resolvedLabel] = true
+						}
+						// If this was an aliased import, record the alias mapping
+						if isAlias {
+							aliases[*resolvedLabel] = imp
 						}
 					}
 				} else {
@@ -150,6 +170,7 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 
 		maybeSetAttrStrings(r, "deps", finalizeDeps(deps, from))
 		maybeSetAttrStrings(r, "proc_macro_deps", finalizeDeps(procMacroDeps, from))
+		maybeSetAliases(r, aliases, from)
 	}
 }
 
@@ -159,6 +180,24 @@ func maybeSetAttrStrings(r *rule.Rule, attr string, val []string) {
 	} else {
 		r.DelAttr(attr)
 	}
+}
+
+// maybeSetAliases sets the aliases attribute on a rule if there are any aliases.
+// The aliases attribute maps dependency labels to their local names (aliases).
+func maybeSetAliases(r *rule.Rule, aliases map[label.Label]string, from label.Label) {
+	if len(aliases) == 0 {
+		r.DelAttr("aliases")
+		return
+	}
+
+	// Convert to map[string]string with relative labels
+	aliasMap := make(map[string]string)
+	for lbl, localName := range aliases {
+		relLabel := lbl.Rel(from.Repo, from.Pkg).String()
+		aliasMap[relLabel] = localName
+	}
+
+	r.SetAttr("aliases", aliasMap)
 }
 
 func (l *rustLang) resolveCrateVersion(cfg *rustConfig, c *config.Config,

@@ -1,0 +1,12 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "aliased_dep",
+    srcs = ["src/lib.rs"],
+    aliases = {
+        "//external_crate": "local_alias",
+    },
+    compile_data = ["Cargo.toml"],
+    visibility = ["//visibility:public"],
+    deps = ["//external_crate"],
+)

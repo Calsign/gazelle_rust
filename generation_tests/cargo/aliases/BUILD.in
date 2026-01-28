@@ -1,0 +1,2 @@
+# gazelle:rust_mode generate_from_cargo
+# gazelle:rust_default_edition 2021

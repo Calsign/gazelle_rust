@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "external_crate",
+    "aliased_dep",
+]
