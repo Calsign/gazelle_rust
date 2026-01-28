@@ -8,9 +8,9 @@ use clap::Parser;
 use prost::Message;
 
 use messages_proto::{
-    CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, Hints, LockfileCratesRequest,
-    LockfileCratesResponse, Request, RustImportsRequest, RustImportsResponse,
-    lockfile_crates_request, request,
+    CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, DependencyAlias, Hints,
+    LockfileCratesRequest, LockfileCratesResponse, Request, RustImportsRequest,
+    RustImportsResponse, lockfile_crates_request, request,
 };
 
 #[derive(clap::Parser)]
@@ -128,7 +128,29 @@ fn handle_cargo_toml_request(
     response.benches = manifest.bench.into_iter().map(build_crate_info).collect();
     response.examples = manifest.example.into_iter().map(build_crate_info).collect();
 
+    // Extract dependency aliases where local_name != package_name
+    response.dependency_aliases = extract_dependency_aliases(&manifest.dependencies);
+
     Ok(response)
+}
+
+/// Extracts dependency aliases from a dependency map.
+/// Returns aliases for dependencies where the local name (key) differs from the package name.
+fn extract_dependency_aliases(deps: &cargo_toml::DepsSet) -> Vec<DependencyAlias> {
+    deps.iter()
+        .filter_map(|(local_name, dep)| {
+            let package_name = match dep {
+                cargo_toml::Dependency::Detailed(details) => details.package.as_ref(),
+                // Inherited dependencies don't support package renaming - they inherit from workspace
+                cargo_toml::Dependency::Inherited(_) => None,
+                cargo_toml::Dependency::Simple(_) => None,
+            };
+            package_name.map(|pkg| DependencyAlias {
+                local_name: local_name.clone(),
+                package_name: pkg.clone(),
+            })
+        })
+        .collect()
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
