@@ -115,6 +115,22 @@ lazy_static::lazy_static! {
                 "file7.txt",
             ],
         },
+        TestCase {
+            filename: "async_tests.rs",
+            enabled_features: vec![],
+            expected_imports: vec![],
+            expected_test_imports: vec![
+                "tokio",
+                "async_std",
+                "actix_rt",
+                "tokio_dep",
+                "async_std_dep",
+                "actix_dep",
+                "regular_dep",
+            ],
+            expected_extern_mods: vec![],
+            expected_compile_data: vec![],
+        },
     ];
 }
 
