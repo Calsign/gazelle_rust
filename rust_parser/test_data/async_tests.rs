@@ -1,8 +1,9 @@
-#[cfg(test)] 
+#[cfg(test)]
 mod tests {
     use async_std;
     use actix_rt;
     use tokio;
+    use custom_framework;
     #[tokio::test]
     async fn tokio_test_function() {
         use tokio_dep;
@@ -21,5 +22,10 @@ mod tests {
     #[test]
     fn regular_test() {
         use regular_dep;
+    }
+
+    #[custom_framework::async_test::test]
+    async fn custom_multi_segment_test() {
+        use custom_dep;
     }
 }

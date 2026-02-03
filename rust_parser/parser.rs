@@ -530,25 +530,19 @@ impl<'ast> AstVisitor<'ast> {
 }
 
 /// Returns true if the path represents a test attribute.
-/// Handles both #[test] and async test attributes like #[tokio::test].
+///
+/// Recognizes:
+/// - Standard: #[test]
+/// - Async/custom test frameworks: any attribute ending in ::test
+///   (e.g., #[tokio::test], #[async_std::test], #[custom::framework::test])
 fn is_test_attribute(path: &syn::Path) -> bool {
-    // Check for single-segment #[test]
+    // Single segment: #[test]
     if let Some(ident) = path.get_ident() {
         return ident == "test";
     }
 
-    // Check for two-segment async test attributes
-    if path.segments.len() == 2 {
-        let segments: Vec<String> = path.segments.iter().map(|s| s.ident.to_string()).collect();
-        let segments_str: Vec<&str> = segments.iter().map(|s| s.as_str()).collect();
-
-        match segments_str.as_slice() {
-            ["tokio", "test"] | ["async_std", "test"] | ["actix_rt", "test"] => return true,
-            _ => {}
-        }
-    }
-
-    false
+    // Multi-segment: check if last segment is "test"
+    path.segments.last().is_some_and(|seg| seg.ident == "test")
 }
 
 impl<'ast> Visit<'ast> for AstVisitor<'ast> {
