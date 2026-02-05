@@ -1,9 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use async_std;
-    use actix_rt;
-    use tokio;
-    use custom_framework;
     #[tokio::test]
     async fn tokio_test_function() {
         use tokio_dep;

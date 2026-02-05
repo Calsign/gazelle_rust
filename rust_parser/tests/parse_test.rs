@@ -116,7 +116,7 @@ lazy_static::lazy_static! {
             ],
         },
         TestCase {
-            filename: "async_tests.rs",
+            filename: "alternative_test_attributes.rs",
             enabled_features: vec![],
             expected_imports: vec![],
             expected_test_imports: vec![
