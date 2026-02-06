@@ -529,6 +529,22 @@ impl<'ast> AstVisitor<'ast> {
     }
 }
 
+/// Returns true if the path represents a test attribute.
+///
+/// Recognizes:
+/// - Standard: #[test]
+/// - Async/custom test frameworks: any attribute ending in ::test
+///   (e.g., #[tokio::test], #[async_std::test], #[custom::framework::test])
+fn is_test_attribute(path: &syn::Path) -> bool {
+    // Single segment: #[test]
+    if let Some(ident) = path.get_ident() {
+        return ident == "test";
+    }
+
+    // Multi-segment: check if last segment is "test"
+    path.segments.last().is_some_and(|seg| seg.ident == "test")
+}
+
 impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     fn visit_use_name(&mut self, node: &'ast syn::UseName) {
         self.add_mod(&node.ident);
@@ -662,11 +678,11 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         } else {
             for attr in &node.attrs {
                 if let syn::Meta::Path(path) = &attr.meta {
-                    if let Some(ident) = path.get_ident() {
-                        if ident == "test" {
-                            self.hints.has_test = true;
-                            is_test_only = true;
-                        } else if ident == "proc_macro" || ident == "proc_macro_attribute" {
+                    if is_test_attribute(path) {
+                        self.hints.has_test = true;
+                        is_test_only = true;
+                    } else if let Some(ident) = path.get_ident() {
+                        if ident == "proc_macro" || ident == "proc_macro_attribute" {
                             self.hints.has_proc_macro = true;
                         }
                     }
