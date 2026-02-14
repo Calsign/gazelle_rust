@@ -677,15 +677,18 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
             self.hints.has_main = true;
         } else {
             for attr in &node.attrs {
-                if let syn::Meta::Path(path) = &attr.meta {
-                    if is_test_attribute(path) {
-                        self.hints.has_test = true;
-                        is_test_only = true;
-                    } else if let Some(ident) = path.get_ident() {
-                        if ident == "proc_macro" || ident == "proc_macro_attribute" {
-                            self.hints.has_proc_macro = true;
+                match &attr.meta {
+                    syn::Meta::Path(path) | syn::Meta::List(syn::MetaList { path, .. }) => {
+                        if is_test_attribute(path) {
+                            self.hints.has_test = true;
+                            is_test_only = true;
+                        } else if let Some(ident) = path.get_ident() {
+                            if ident == "proc_macro" || ident == "proc_macro_attribute" {
+                                self.hints.has_proc_macro = true;
+                            }
                         }
                     }
+                    _ => {}
                 }
             }
         }
