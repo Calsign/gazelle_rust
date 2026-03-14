@@ -1,4 +1,5 @@
 # gazelle:exclude test_data
+# gazelle:exclude target
 
 filegroup(
     name = "test_data",
