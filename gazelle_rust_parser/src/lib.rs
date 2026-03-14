@@ -191,6 +191,8 @@ struct AstVisitor<'ast> {
     enabled_features: HashSet<String>,
     /// Files that are included via include_str! and include_bytes! macros.
     compile_data: HashSet<String>,
+    /// Keep track of whether we're currently inside a use tree to handle aliases correctly.
+    inside_use_tree: bool,
 }
 
 impl AstVisitor<'_> {
@@ -209,6 +211,7 @@ impl AstVisitor<'_> {
             mod_denylist: HashSet::new(),
             enabled_features: enabled_features.iter().cloned().collect(),
             compile_data: HashSet::new(),
+            inside_use_tree: false,
         }
     }
 }
@@ -546,12 +549,26 @@ fn is_test_attribute(path: &syn::Path) -> bool {
 }
 
 impl<'ast> Visit<'ast> for AstVisitor<'ast> {
+    fn visit_use_tree(&mut self, node: &'ast syn::UseTree) {
+        let prev_inside_use_tree = self.inside_use_tree;
+        self.inside_use_tree = true;
+
+        if !prev_inside_use_tree {
+            if let syn::UseTree::Rename(rename) = node {
+                self.add_import(&rename.ident);
+            }
+        }
+
+        visit::visit_use_tree(self, node);
+
+        self.inside_use_tree = prev_inside_use_tree;
+    }
+
     fn visit_use_name(&mut self, node: &'ast syn::UseName) {
         self.add_mod(&node.ident);
     }
 
     fn visit_use_rename(&mut self, node: &'ast syn::UseRename) {
-        self.add_import(&node.ident);
         self.add_mod(&node.rename);
     }
 

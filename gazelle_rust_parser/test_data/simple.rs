@@ -1,11 +1,12 @@
 extern crate test_extern_crate_1;
 
+use r#type;
 use test_use_1;
 use test_use_2::Something;
 use test_use_3::*;
-use test_use_4 as outer_alias;
+use test_use_4 as outer_alias_1;
 use test_use_5::self_use::{self, x};
-use r#type;
+use test_use_6::some_mod::foo as outer_alias_2;
 
 #[gazelle::ignore]
 use ignored_dep::ignored_mod;
@@ -26,7 +27,7 @@ fn main() {
 
     test_inner_1::something();
 
-    outer_alias::something();
+    outer_alias_1::something();
 
     use test_duplicate;
 
@@ -67,7 +68,7 @@ fn f(x: test_args_1::Something) -> test_ret_1::Something {
 
     inner_alias::something();
 
-    outer_alias::something();
+    outer_alias_1::something();
 
     foobar::something();
 
