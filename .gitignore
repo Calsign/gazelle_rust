@@ -1,4 +1,5 @@
 /bazel-*
 /build
 /macro/target
+/gazelle_rust_parser/target
 rust-project.json

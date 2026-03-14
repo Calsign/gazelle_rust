@@ -1,0 +1,7 @@
+# gazelle:exclude test_data
+
+filegroup(
+    name = "test_data",
+    srcs = glob(["test_data/*.rs"]),
+    visibility = [":__subpackages__"],
+)

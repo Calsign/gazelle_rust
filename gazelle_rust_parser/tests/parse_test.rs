@@ -1,6 +1,4 @@
-use runfiles::Runfiles;
 use std::collections::HashSet;
-use std::env;
 use std::error::Error;
 use std::path::PathBuf;
 
@@ -166,11 +164,14 @@ fn assert_eq_vecs(actual: &[String], expected: &[String], msg: &str) {
 
 #[test]
 fn parse_test() -> Result<(), Box<dyn Error>> {
-    let dir = if cfg!(feature = "bazel") {
-        let r = Runfiles::create().unwrap();
-        r.rlocation("_main/rust_parser/test_data/").unwrap()
-    } else {
-        let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    #[cfg(feature = "bazel")]
+    let dir = {
+        let r = runfiles::Runfiles::create().unwrap();
+        r.rlocation("_main/gazelle_rust_parser/test_data/").unwrap()
+    };
+    #[cfg(not(feature = "bazel"))]
+    let dir = {
+        let mut d = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
         d.push("test_data");
         d
     };
@@ -184,7 +185,8 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
             .map(|s| s.to_string())
             .collect();
 
-        let rust_imports = parser::parse_imports(file, PathBuf::new(), &enabled_features)?;
+        let rust_imports =
+            gazelle_rust_parser::parse_imports(file, PathBuf::new(), &enabled_features)?;
         assert_eq_vecs(
             &rust_imports.imports,
             &test_case

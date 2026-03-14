@@ -1,17 +1,5 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
 
-# gazelle:exclude test_data
-
-rust_library(
-    name = "parser",
-    srcs = ["parser.rs"],
-    visibility = [":__subpackages__"],
-    deps = [
-        "@crates//:proc-macro2",
-        "@crates//:syn",
-    ],
-)
-
 rust_library(
     name = "lockfile_crates",
     srcs = ["lockfile_crates.rs"],
@@ -29,16 +17,10 @@ rust_binary(
     visibility = ["//visibility:public"],
     deps = [
         ":lockfile_crates",
-        ":parser",
+        "//gazelle_rust_parser/src:gazelle_rust_parser",
         "//proto:messages_rust_proto",
         "@crates//:cargo_toml",
         "@crates//:clap",
         "@rules_rust_prost//private/3rdparty/crates:prost",
     ],
-)
-
-filegroup(
-    name = "test_data",
-    srcs = glob(["test_data/*.rs"]),
-    visibility = [":__subpackages__"],
 )

@@ -1,0 +1,11 @@
+[package]
+name = "rust_parser"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "parser.rs"
+
+[dependencies]
+proc-macro2 = "1"
+syn = { version = "2", features = ["full", "visit", "extra-traits"] }

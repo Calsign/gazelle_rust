@@ -4,9 +4,9 @@ rust_test(
     name = "parse_test",
     srcs = ["parse_test.rs"],
     crate_features = ["bazel"],
-    data = ["//rust_parser:test_data"],
+    data = ["//gazelle_rust_parser:test_data"],
     deps = [
-        "//rust_parser:parser",
+        "//gazelle_rust_parser/src:gazelle_rust_parser",
         "@crates//:lazy_static",
         "@rules_rust//tools/runfiles",
     ],

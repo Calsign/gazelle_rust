@@ -8,9 +8,9 @@ use clap::Parser;
 use prost::Message;
 
 use messages_proto::{
-    CargoCrateInfo, CargoTomlRequest, CargoTomlResponse, DependencyAlias, Hints,
-    LockfileCratesRequest, LockfileCratesResponse, Request, RustImportsRequest,
-    RustImportsResponse, lockfile_crates_request, request,
+    lockfile_crates_request, request, CargoCrateInfo, CargoTomlRequest, CargoTomlResponse,
+    DependencyAlias, Hints, LockfileCratesRequest, LockfileCratesResponse, Request,
+    RustImportsRequest, RustImportsResponse,
 };
 
 #[derive(clap::Parser)]
@@ -22,7 +22,7 @@ enum Args {
 fn handle_rust_imports_request(
     request: RustImportsRequest,
 ) -> Result<RustImportsResponse, Box<dyn Error>> {
-    let rust_imports = parser::parse_imports(
+    let rust_imports = gazelle_rust_parser::parse_imports(
         PathBuf::from(request.absolute_path),
         PathBuf::from(request.relative_path),
         &request.enabled_features,
@@ -158,7 +158,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match args {
         Args::OneShot { path } => {
-            let mut rust_imports = parser::parse_imports(path, PathBuf::new(), &[])?;
+            let mut rust_imports = gazelle_rust_parser::parse_imports(path, PathBuf::new(), &[])?;
             rust_imports.imports.sort();
 
             println!("Imports:");

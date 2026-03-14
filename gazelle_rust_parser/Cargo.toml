@@ -1,0 +1,25 @@
+[package]
+name = "gazelle_rust_parser"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Parse and extract imports from rust sources, used by the gazelle_rust build file generator"
+homepage = "https://github.com/Calsign/gazelle_rust/tree/main/gazelle_rust_parser"
+repository = "https://github.com/Calsign/gazelle_rust"
+keywords = ["bazel", "gazelle_rust"]
+categories = ["development-tools"]
+exclude = ["BUILD.bazel", "src/BUILD.bazel", "tests/BUILD.bazel"]
+
+[lib]
+name = "gazelle_rust_parser"
+path = "src/lib.rs"
+
+[features]
+bazel = []
+
+[dependencies]
+proc-macro2 = "1"
+syn = { version = "2", features = ["full", "visit", "extra-traits"] }
+
+[dev-dependencies]
+lazy_static = "1.5"
