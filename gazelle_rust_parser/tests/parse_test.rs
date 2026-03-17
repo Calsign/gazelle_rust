@@ -25,6 +25,7 @@ lazy_static::lazy_static! {
                 "test_use_4",
                 "test_use_5",
                 "test_use_6",
+                "test_use_7",
                 "test_duplicate",
                 "test_inner_1",
                 "test_args_1",

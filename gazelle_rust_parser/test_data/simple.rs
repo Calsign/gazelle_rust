@@ -8,6 +8,10 @@ use test_use_4 as outer_alias_1;
 use test_use_5::self_use::{self, x};
 use test_use_6::some_mod::foo as outer_alias_2;
 
+pub use {
+    test_use_7 as outer_alias_3,
+};
+
 #[gazelle::ignore]
 use ignored_dep::ignored_mod;
 use ignored_mod::foobar;
