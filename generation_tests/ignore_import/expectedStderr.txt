@@ -1,0 +1,2 @@
+gazelle: //subpkg: no match for false_positive
+gazelle: //:lib: no match for real_dep
