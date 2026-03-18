@@ -1,0 +1,4 @@
+[package]
+name = "extract_lints_test"
+version = "0.1.0"
+edition = "2021"

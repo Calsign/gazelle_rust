@@ -1,0 +1,38 @@
+load("@rules_rust//cargo:defs.bzl", "extract_cargo_lints")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+
+# gazelle:rust_mode generate_from_cargo
+# gazelle:rust_extract_cargo_lints true
+
+extract_cargo_lints(
+    name = "workspace_lints",
+    manifest = "Cargo.toml",
+    workspace = "//:Cargo.toml",
+)
+
+rust_library(
+    name = "extract_lints_test_lib",
+    srcs = ["src/lib.rs"],
+    compile_data = ["Cargo.toml"],
+    crate_name = "extract_lints_test",
+    edition = "2021",
+    lint_config = ":workspace_lints",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "extract_lints_test",
+    srcs = ["src/main.rs"],
+    compile_data = ["Cargo.toml"],
+    edition = "2021",
+    lint_config = ":workspace_lints",
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "extract_lints_test_lib_test",
+    compile_data = ["Cargo.toml"],
+    crate = ":extract_lints_test_lib",
+    edition = "2021",
+    lint_config = ":workspace_lints",
+)

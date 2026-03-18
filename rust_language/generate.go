@@ -401,6 +401,30 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 				// Determine if there are binaries (which would have main.rs files)
 				hasMainRs := len(response.Binaries) > 0
 
+				// Check if we're generating any Rust targets that use lint_config
+				// Note: cargo_build_script does not use lint_config, so we exclude it
+				hasAnyRustTargets := response.Library != nil ||
+					len(response.Binaries) > 0 ||
+					len(response.Tests) > 0 ||
+					len(response.Benches) > 0 ||
+					len(response.Examples) > 0
+
+				// Generate extract_cargo_lints target only if we're generating Rust targets that use it
+				if cfg.ExtractCargoLints && hasAnyRustTargets {
+					lintsRule := rule.NewRule("extract_cargo_lints", "workspace_lints")
+					lintsRule.SetAttr("manifest", "Cargo.toml")
+					lintsRule.SetAttr("workspace", "//:Cargo.toml")
+					result.Gen = append(result.Gen, lintsRule)
+					result.Imports = append(result.Imports, RuleData{
+						rule:            lintsRule,
+						responses:       []*pb.RustImportsResponse{},
+						testedCrate:     nil,
+						buildScript:     nil,
+						parentCrateName: parentCrateName,
+						aliases:         dependencyAliases,
+					})
+				}
+
 				if response.Library != nil {
 					// if there is a main.rs next to lib.rs, they will both have the same crate
 					// name; need to give the library a different name
@@ -470,6 +494,10 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 				}
 				if parentCrateEdition != "" && parentCrateEdition != cfg.DefaultEdition {
 					testRule.SetAttr("edition", parentCrateEdition)
+				}
+
+				if cfg.ExtractCargoLints {
+					testRule.SetAttr("lint_config", ":workspace_lints")
 				}
 
 				result.Gen = append(result.Gen, testRule)
@@ -579,6 +607,10 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 	}
 	if len(enabledFeatures) > 0 {
 		newRule.SetAttr("crate_features", enabledFeatures)
+	}
+
+	if cfg.ExtractCargoLints {
+		newRule.SetAttr("lint_config", ":workspace_lints")
 	}
 
 	var buildScript *label.Label = nil
