@@ -551,7 +551,14 @@ fn is_test_attribute(path: &syn::Path) -> bool {
 impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     fn visit_use_tree(&mut self, node: &'ast syn::UseTree) {
         let prev_inside_use_tree = self.inside_use_tree;
-        self.inside_use_tree = true;
+
+        // Only set inside_use_tree for Path nodes, as these represent nested paths
+        // like `a::b::c`. For other variants (Name, Rename, Group, Glob), we don't
+        // want to set this flag as it would prevent detecting top-level renames
+        // in use groups like `pub use { foo as bar }`.
+        if matches!(node, syn::UseTree::Path(_)) {
+            self.inside_use_tree = true;
+        }
 
         if !prev_inside_use_tree {
             if let syn::UseTree::Rename(rename) = node {
