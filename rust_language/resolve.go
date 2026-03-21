@@ -111,6 +111,11 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 			}
 
 			for _, imp := range imports {
+				// Skip imports that are explicitly ignored
+				if cfg.IgnoredImports[imp] {
+					continue
+				}
+
 				// TODO(will): not doing this for rust_binary because this fixes the case where a
 				// binary uses a library of the same name, which happens for the auto lib.rs and
 				// main.rs bins/libs, but unclear if this is correct in all cases

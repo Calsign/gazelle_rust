@@ -55,6 +55,10 @@ var (
 
 	// Set the default edition.
 	defaultEditionDirective string = "rust_default_edition"
+
+	// Ignore a specific import when resolving dependencies.
+	// usage: # gazelle:rust_ignore_import <import name>
+	ignoreImportDirective string = "rust_ignore_import"
 )
 
 type rustConfig struct {
@@ -66,6 +70,7 @@ type rustConfig struct {
 	EnabledFeatures    map[string]bool
 	DefaultFeatures    bool
 	DefaultEdition     string
+	IgnoredImports     map[string]bool
 }
 
 func (cfg *rustConfig) Clone() *rustConfig {
@@ -81,6 +86,8 @@ func (cfg *rustConfig) Clone() *rustConfig {
 	for k, v := range cfg.KindMapInverse {
 		copy.KindMapInverse[k] = v
 	}
+	// Don't copy IgnoredImports - make rust_ignore_import local to each BUILD file
+	copy.IgnoredImports = make(map[string]bool)
 	return &copy
 }
 
@@ -186,7 +193,8 @@ func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 func (*rustLang) KnownDirectives() []string {
 	return []string{modeDirective, lockfileDirective, cargoLockfileDirective,
 		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective,
-		rustFeatureDirective, defaultFeaturesDirective, defaultEditionDirective}
+		rustFeatureDirective, defaultFeaturesDirective, defaultEditionDirective,
+		ignoreImportDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
@@ -221,6 +229,7 @@ func (l *rustLang) Configure(c *config.Config, rel string, from *rule.File) {
 			EnabledFeatures:    make(map[string]bool),
 			DefaultFeatures:    true, // enable default features by default
 			DefaultEdition:     "",
+			IgnoredImports:     make(map[string]bool),
 		}
 	} else {
 		// NOTE(will): important to clone so that we don't leak state across directories
@@ -280,6 +289,8 @@ func (l *rustLang) Configure(c *config.Config, rel string, from *rule.File) {
 				cfg.DefaultFeatures = value
 			} else if directive.Key == defaultEditionDirective {
 				cfg.DefaultEdition = directive.Value
+			} else if directive.Key == ignoreImportDirective {
+				cfg.IgnoredImports[directive.Value] = true
 			}
 		}
 	}
