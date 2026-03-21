@@ -1,0 +1,2 @@
+# gazelle:rust_mode generate_from_cargo
+# gazelle:rust_srcs_glob true

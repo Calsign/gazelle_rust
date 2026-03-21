@@ -55,6 +55,12 @@ var (
 
 	// Set the default edition.
 	defaultEditionDirective string = "rust_default_edition"
+
+	// Enable glob pattern for srcs attribute instead of listing files explicitly.
+	// When enabled, generates srcs = glob(["<src_dir>/**/*.rs"]) for rust_library
+	// and rust_proc_macro targets. rust_binary and cargo_build_script targets
+	// continue to list files explicitly.
+	srcsGlobDirective string = "rust_srcs_glob"
 )
 
 type rustConfig struct {
@@ -66,6 +72,7 @@ type rustConfig struct {
 	EnabledFeatures    map[string]bool
 	DefaultFeatures    bool
 	DefaultEdition     string
+	SrcsGlob           bool
 }
 
 func (cfg *rustConfig) Clone() *rustConfig {
@@ -186,7 +193,8 @@ func (l *rustLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 func (*rustLang) KnownDirectives() []string {
 	return []string{modeDirective, lockfileDirective, cargoLockfileDirective,
 		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective,
-		rustFeatureDirective, defaultFeaturesDirective, defaultEditionDirective}
+		rustFeatureDirective, defaultFeaturesDirective, defaultEditionDirective,
+		srcsGlobDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
@@ -221,6 +229,7 @@ func (l *rustLang) Configure(c *config.Config, rel string, from *rule.File) {
 			EnabledFeatures:    make(map[string]bool),
 			DefaultFeatures:    true, // enable default features by default
 			DefaultEdition:     "",
+			SrcsGlob:           false,
 		}
 	} else {
 		// NOTE(will): important to clone so that we don't leak state across directories
@@ -280,6 +289,13 @@ func (l *rustLang) Configure(c *config.Config, rel string, from *rule.File) {
 				cfg.DefaultFeatures = value
 			} else if directive.Key == defaultEditionDirective {
 				cfg.DefaultEdition = directive.Value
+			} else if directive.Key == srcsGlobDirective {
+				value, err := strconv.ParseBool(directive.Value)
+				if err != nil {
+					l.Log(c, logFatal, from, "bad %s, should be gazelle:%s <true|false>",
+						directive.Key, directive.Key)
+				}
+				cfg.SrcsGlob = value
 			}
 		}
 	}

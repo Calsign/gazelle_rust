@@ -16,6 +16,70 @@ import (
 	pb "github.com/calsign/gazelle_rust/proto"
 )
 
+// getCommonPrefix returns the common directory prefix of all source files.
+// For example, if all files are under "src/", it returns "src".
+// If files are in multiple top-level directories, returns "".
+func getCommonPrefix(srcs []string) string {
+	if len(srcs) == 0 {
+		return ""
+	}
+
+	// Get the directory of the first source file
+	firstDir := filepath.Dir(srcs[0])
+	if firstDir == "." {
+		return ""
+	}
+
+	// Get the top-level directory (first component)
+	parts := strings.Split(firstDir, string(filepath.Separator))
+	if len(parts) == 0 {
+		return ""
+	}
+	prefix := parts[0]
+
+	// Check if all other files share this prefix
+	for _, src := range srcs[1:] {
+		dir := filepath.Dir(src)
+		if dir == "." || !strings.HasPrefix(dir, prefix+string(filepath.Separator)) && dir != prefix {
+			// Files are in different top-level directories or in current directory
+			return ""
+		}
+	}
+
+	return prefix
+}
+
+// createGlobExpr creates a Bazel glob expression for the given source files.
+// Returns the glob expression as a rule.GlobValue.
+// If hasMainRs is true, excludes the top-level main.rs file since that should only
+// appear in rust_binary targets.
+func createGlobExpr(srcs []string, hasMainRs bool) rule.GlobValue {
+	prefix := getCommonPrefix(srcs)
+	var pattern string
+
+	if prefix != "" {
+		pattern = prefix + "/**/*.rs"
+	} else {
+		pattern = "**/*.rs"
+	}
+
+	globValue := rule.GlobValue{
+		Patterns: []string{pattern},
+	}
+
+	if hasMainRs {
+		var excludePattern string
+		if prefix != "" {
+			excludePattern = prefix + "/main.rs"
+		} else {
+			excludePattern = "main.rs"
+		}
+		globValue.Excludes = []string{excludePattern}
+	}
+
+	return globValue
+}
+
 func (l *rustLang) isTestDir(dirname *string) bool {
 	return dirname != nil && (*dirname == "test" || *dirname == "tests")
 }
@@ -334,6 +398,9 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 					dependencyAliases[alias.PackageName] = alias.LocalName
 				}
 
+				// Determine if there are binaries (which would have main.rs files)
+				hasMainRs := len(response.Binaries) > 0
+
 				if response.Library != nil {
 					// if there is a main.rs next to lib.rs, they will both have the same crate
 					// name; need to give the library a different name
@@ -350,19 +417,19 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 						kind = "rust_proc_macro"
 					}
 
-					l.generateCargoRule(args.Config, &args, response.Library, kind, suffix, []string{}, hasBuildScript, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
+					l.generateCargoRule(args.Config, &args, response.Library, kind, suffix, []string{}, hasBuildScript, hasMainRs, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
 				}
 				for _, binary := range response.Binaries {
-					l.generateCargoRule(args.Config, &args, binary, "rust_binary", "", []string{}, hasBuildScript, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
+					l.generateCargoRule(args.Config, &args, binary, "rust_binary", "", []string{}, hasBuildScript, false, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
 				}
 				for _, test := range response.Tests {
-					l.generateCargoRule(args.Config, &args, test, "rust_test", "", []string{}, hasBuildScript, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
+					l.generateCargoRule(args.Config, &args, test, "rust_test", "", []string{}, hasBuildScript, false, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
 				}
 				for _, bench := range response.Benches {
-					l.generateCargoRule(args.Config, &args, bench, "rust_binary", "", []string{"bench"}, hasBuildScript, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
+					l.generateCargoRule(args.Config, &args, bench, "rust_binary", "", []string{"bench"}, hasBuildScript, false, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
 				}
 				for _, example := range response.Examples {
-					l.generateCargoRule(args.Config, &args, example, "rust_binary", "", []string{"example"}, hasBuildScript, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
+					l.generateCargoRule(args.Config, &args, example, "rust_binary", "", []string{"example"}, hasBuildScript, false, parentCrateName, parentCrateEdition, enabledFeatures, dependencyAliases, &result)
 				}
 			}
 		}
@@ -417,12 +484,28 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 		}
 	}
 
+	// If srcs_glob is enabled, we need to clear the srcs attribute from existing rules
+	// to avoid merge conflicts when replacing explicit file lists with glob expressions.
+	if cfg.SrcsGlob && args.File != nil {
+		generatedRuleNames := make(map[string]bool)
+		for _, r := range result.Gen {
+			generatedRuleNames[r.Name()] = true
+		}
+
+		for _, existingRule := range args.File.Rules {
+			if generatedRuleNames[existingRule.Name()] {
+				// Remove the srcs attribute so our glob can replace it without conflict
+				existingRule.DelAttr("srcs")
+			}
+		}
+	}
+
 	return result
 }
 
 func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateArgs,
 	crateInfo *pb.CargoCrateInfo, kind string, suffix string, tags []string,
-	hasBuildScript bool, parentCrateName string, parentCrateEdition string,
+	hasBuildScript bool, hasMainRs bool, parentCrateName string, parentCrateEdition string,
 	enabledFeatures []string, dependencyAliases map[string]string, result *language.GenerateResult) {
 
 	targetName := crateInfo.Name + suffix
@@ -466,7 +549,14 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 	newRule := rule.NewRule(kind, targetName)
 
 	if len(srcs) > 0 {
-		newRule.SetAttr("srcs", srcs)
+		cfg := l.GetConfig(args.Config)
+		// Only use glob for rust_library targets (including rust_proc_macro)
+		if cfg.SrcsGlob && (kind == "rust_library" || kind == "rust_proc_macro") {
+			// Use glob expression instead of listing files explicitly
+			newRule.SetAttr("srcs", createGlobExpr(srcs, hasMainRs))
+		} else {
+			newRule.SetAttr("srcs", srcs)
+		}
 	}
 	newRule.SetAttr("visibility", []string{"//visibility:public"})
 	newRule.SetAttr("compile_data", setToSortedVector(compile_data))
