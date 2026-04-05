@@ -65,6 +65,11 @@ var (
 	// Ignore a specific import when resolving dependencies.
 	// usage: # gazelle:rust_ignore_import <import name>
 	ignoreImportDirective string = "rust_ignore_import"
+
+	// Extract cargo lints from Cargo.toml files.
+	// When enabled in generate_from_cargo mode, creates extract_cargo_lints targets
+	// and adds lint_config attributes to all generated targets.
+	extractCargoLintsDirective string = "rust_extract_cargo_lints"
 )
 
 type rustConfig struct {
@@ -78,6 +83,7 @@ type rustConfig struct {
 	DefaultEdition     string
 	SrcsGlob           bool
 	IgnoredImports     map[string]bool
+	ExtractCargoLints  bool
 }
 
 func (cfg *rustConfig) Clone() *rustConfig {
@@ -121,9 +127,10 @@ func (*rustLang) Name() string { return langName }
 var (
 	commonDefs []string = []string{"rust_library", "rust_binary", "rust_test",
 		"rust_proc_macro", "rust_shared_library", "rust_static_library"}
-	protoDefs []string = []string{"rust_proto_library", "rust_grpc_library"}
-	prostDefs []string = []string{"rust_prost_library"}
-	cargoDefs []string = []string{"cargo_build_script"}
+	protoDefs      []string = []string{"rust_proto_library", "rust_grpc_library"}
+	prostDefs      []string = []string{"rust_prost_library"}
+	cargoDefs      []string = []string{"cargo_build_script"}
+	cargoLintsDefs []string = []string{"extract_cargo_lints"}
 )
 
 var resolvableDefs = append(
@@ -164,6 +171,13 @@ func (*rustLang) Kinds() map[string]rule.KindInfo {
 		}
 	}
 
+	for _, cargoLintsDef := range cargoLintsDefs {
+		kinds[cargoLintsDef] = rule.KindInfo{
+			MergeableAttrs: map[string]bool{},
+			ResolveAttrs:   map[string]bool{},
+		}
+	}
+
 	return kinds
 }
 
@@ -183,7 +197,7 @@ func (*rustLang) Loads() []rule.LoadInfo {
 		},
 		{
 			Name:    "@rules_rust//cargo:defs.bzl",
-			Symbols: cargoDefs,
+			Symbols: append(cargoDefs, cargoLintsDefs...),
 		},
 	}
 }
@@ -201,7 +215,7 @@ func (*rustLang) KnownDirectives() []string {
 	return []string{modeDirective, lockfileDirective, cargoLockfileDirective,
 		cratesPrefixDirective, procMacroOverrideDirective, allowUnusedCrateDirective,
 		rustFeatureDirective, defaultFeaturesDirective, defaultEditionDirective,
-		srcsGlobDirective, ignoreImportDirective}
+		srcsGlobDirective, ignoreImportDirective, extractCargoLintsDirective}
 }
 
 func (l *rustLang) GetConfig(c *config.Config) *rustConfig {
@@ -238,6 +252,7 @@ func (l *rustLang) Configure(c *config.Config, rel string, from *rule.File) {
 			DefaultEdition:     "",
 			SrcsGlob:           false,
 			IgnoredImports:     make(map[string]bool),
+			ExtractCargoLints:  false,
 		}
 	} else {
 		// NOTE(will): important to clone so that we don't leak state across directories
@@ -306,6 +321,13 @@ func (l *rustLang) Configure(c *config.Config, rel string, from *rule.File) {
 				cfg.SrcsGlob = value
 			} else if directive.Key == ignoreImportDirective {
 				cfg.IgnoredImports[directive.Value] = true
+			} else if directive.Key == extractCargoLintsDirective {
+				value, err := strconv.ParseBool(directive.Value)
+				if err != nil {
+					l.Log(c, logFatal, "bad %s, should be gazelle:%s <true|false>",
+						directive.Key, directive.Key)
+				}
+				cfg.ExtractCargoLints = value
 			}
 		}
 	}
