@@ -98,7 +98,7 @@ fn filter_imports(imports: Vec<Ident>) -> Vec<String> {
 // Macros aren't parsed as part of the overall AST, so when we parse them we get an owned value.
 // This approach allows us to store both the references and the owned values together, minimzing
 // clones.
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Clone)]
 enum Ident<'ast> {
     Ref(&'ast syn::Ident),
     Owned(syn::Ident),
@@ -116,6 +116,14 @@ impl From<syn::Ident> for Ident<'_> {
     }
 }
 
+impl PartialEq for Ident<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_ref() == other.as_ref()
+    }
+}
+
+impl Eq for Ident<'_> {}
+
 impl PartialEq<&str> for Ident<'_> {
     fn eq(&self, other: &&str) -> bool {
         match self {
@@ -125,7 +133,20 @@ impl PartialEq<&str> for Ident<'_> {
     }
 }
 
+impl std::hash::Hash for Ident<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.as_ref().hash(state);
+    }
+}
+
 impl Ident<'_> {
+    fn as_ref(&self) -> &syn::Ident {
+        match self {
+            Self::Ref(ident) => ident,
+            Self::Owned(ident) => ident,
+        }
+    }
+
     // NOTE: this is just matching the wrapping the implementation in syn::Ident
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
@@ -216,9 +237,10 @@ impl AstVisitor<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone)]
 enum Directive {
     Ignore,
+    Provides(Vec<Ident<'static>>),
 }
 
 impl<'ast> Directive {
@@ -237,6 +259,19 @@ impl<'ast> Directive {
         // can't use match because we can't construct Idents to match against
         if ident == "ignore" {
             Self::Ignore
+        } else if ident == "provides" {
+            let syn::Meta::List(list) = meta else {
+                panic!("invalid gazelle::provides directive");
+            };
+
+            let provides: Vec<_> = list
+                .parse_args_with(Punctuated::<syn::Ident, syn::Token![,]>::parse_terminated)
+                .expect("invalid gazelle::provides directive")
+                .into_iter()
+                .map(Ident::Owned)
+                .collect();
+
+            Self::Provides(provides)
         } else {
             panic!("unexpected gazelle directive: {}", ident);
         }
@@ -245,16 +280,20 @@ impl<'ast> Directive {
 
 #[derive(Default)]
 struct DirectiveSet {
-    directives: HashSet<Directive>,
+    should_ignore: bool,
+    provides: Vec<Ident<'static>>,
 }
 
 impl DirectiveSet {
     fn insert(&mut self, directive: Directive) {
-        self.directives.insert(directive);
-    }
-
-    fn should_ignore(&self) -> bool {
-        self.directives.contains(&Directive::Ignore)
+        match directive {
+            Directive::Ignore => {
+                self.should_ignore = true;
+            }
+            Directive::Provides(mut provides) => {
+                self.provides.append(&mut provides);
+            }
+        }
     }
 }
 
@@ -434,15 +473,14 @@ impl<'ast> AstVisitor<'ast> {
     fn parse_directives(&self, attrs: &'ast Vec<syn::Attribute>) -> DirectiveSet {
         let mut directives = DirectiveSet::default();
         for attr in attrs {
-            if let syn::Meta::Path(path) = &attr.meta {
-                if path
-                    .segments
-                    .first()
-                    .map(|seg| seg.ident == "gazelle")
-                    .unwrap_or(false)
-                {
-                    directives.insert(Directive::parse(&attr.meta));
-                }
+            if attr
+                .meta
+                .path()
+                .segments
+                .first()
+                .is_some_and(|seg| seg.ident == "gazelle")
+            {
+                directives.insert(Directive::parse(&attr.meta));
             }
         }
         directives
@@ -598,7 +636,7 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         // NOTE: We want to ignore any dependencies inside the ignored scope. However, we still want
         // to bring anything imported into scope, hence the visit::visit_item_use outside the
         // conditional below.
-        if !directives.should_ignore() {
+        if !directives.should_ignore {
             parse_use_imports(&node.tree, &mut imports);
         }
 
@@ -614,6 +652,10 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         self.mod_denylist = imports;
         visit::visit_item_use(self, node);
         self.mod_denylist.clear();
+
+        for provided in directives.provides {
+            self.add_mod(provided);
+        }
     }
 
     fn visit_use_path(&mut self, node: &'ast syn::UsePath) {
@@ -637,8 +679,12 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         }
 
         let directives = self.parse_directives(&node.attrs);
-        if !directives.should_ignore() {
+        if !directives.should_ignore {
             self.add_import(&node.ident);
+        }
+
+        for provided in directives.provides {
+            self.add_mod(provided);
         }
     }
 
@@ -744,6 +790,8 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
             return;
         }
 
+        let directives = self.parse_directives(&node.attrs);
+
         if let Some(macro_ident) = node.mac.path.get_ident() {
             if macro_ident == "macro_rules" {
                 if let Some(new_ident) = &node.ident {
@@ -751,7 +799,12 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
                 }
             }
         }
+
         visit::visit_item_macro(self, node);
+
+        for provided in directives.provides {
+            self.add_mod(provided);
+        }
     }
 
     fn visit_macro(&mut self, mac: &'ast syn::Macro) {
