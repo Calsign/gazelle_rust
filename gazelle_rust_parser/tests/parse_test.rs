@@ -136,6 +136,14 @@ lazy_static::lazy_static! {
             expected_extern_mods: vec![],
             expected_compile_data: vec![],
         },
+        TestCase {
+            filename: "provides.rs",
+            enabled_features: vec![],
+            expected_imports: vec!["gazelle"],
+            expected_test_imports: vec![],
+            expected_extern_mods: vec![],
+            expected_compile_data: vec![],
+        },
     ];
 }
 

@@ -7,3 +7,11 @@ use proc_macro::TokenStream;
 pub fn ignore(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
+
+/// This is a dummy macro that returns the token stream unchanged. It is parsed by gazelle and
+/// indicates that the attached item brings module namespace(s) into scope in a way that gazelle
+/// does not understand.
+#[proc_macro_attribute]
+pub fn provides(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
