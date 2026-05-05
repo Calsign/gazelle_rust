@@ -291,7 +291,7 @@ def aliases(
 _NORMAL_DEPENDENCIES = {
     "": {
         _COMMON_CONDITION: {
-            "serde": "@crates_vendor__serde-1.0.151//:serde",
+            "serde": "@gazelle_rust_crates_vendor__serde-1.0.151//:serde",
         },
     },
 }

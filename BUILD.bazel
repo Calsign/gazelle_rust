@@ -6,7 +6,7 @@ load("@rules_go//go:def.bzl", "nogo")
 # gazelle:exclude generation_tests
 
 # gazelle:rust_cargo_lockfile Cargo.lock
-# gazelle:rust_crates_prefix @crates//:
+# gazelle:rust_crates_prefix @gazelle_rust_crates//:
 
 exports_files(
     srcs = ["cargo.lock"],

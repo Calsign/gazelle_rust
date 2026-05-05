@@ -6,7 +6,7 @@ rust_library(
     visibility = [":__subpackages__"],
     deps = [
         "//proto:messages_rust_proto",
-        "@crates//:cargo-lock",
+        "@gazelle_rust_crates//:cargo-lock",
         "@rules_rust//crate_universe:cargo_bazel",
     ],
 )
@@ -19,8 +19,8 @@ rust_binary(
         ":lockfile_crates",
         "//gazelle_rust_parser/src:gazelle_rust_parser",
         "//proto:messages_rust_proto",
-        "@crates//:cargo_toml",
-        "@crates//:clap",
+        "@gazelle_rust_crates//:cargo_toml",
+        "@gazelle_rust_crates//:clap",
         "@rules_rust_prost//private/3rdparty/crates:prost",
     ],
 )

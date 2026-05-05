@@ -38,7 +38,7 @@ crates_repository(
     },
 )
 
-load("@crates//:defs.bzl", "crate_repositories")
+load("@gazelle_rust_crates//:defs.bzl", "crate_repositories")
 
 crate_repositories()
 

@@ -8,7 +8,7 @@ rust_library(
         "//rust_parser:__subpackages__",
     ],
     deps = [
-        "@crates//:proc-macro2",
-        "@crates//:syn",
+        "@gazelle_rust_crates//:proc-macro2",
+        "@gazelle_rust_crates//:syn",
     ],
 )

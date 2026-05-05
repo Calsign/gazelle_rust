@@ -2,7 +2,6 @@
 common --sandbox_default_allow_network=false
 common --incompatible_strict_action_env
 common --incompatible_disallow_empty_glob=true
-common --experimental_isolated_extension_usages
 
 # Prevent incompatible versions of MODULE.bazel and MODULE.bazel.lock from being committed.
 # If you update MODULE.bazel, always re-run `bazel mod deps --lockfile_mode=update` and commit

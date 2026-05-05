@@ -37,10 +37,10 @@ register_toolchains("@rust_toolchains//:all")
 bazel_dep(name = "rules_rust_prost", version = "0.67.0")
 
 # Rust dependencies
-crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate", isolate = True)
+crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate")
 crate.from_cargo(
-    name = "crates",
+    name = "gazelle_rust_crates",
     cargo_lockfile = "//:Cargo.lock",
     manifests = ["//:Cargo.toml"],
 )
-use_repo(crate, "crates")
+use_repo(crate, "gazelle_rust_crates")
