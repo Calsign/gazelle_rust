@@ -3,6 +3,7 @@
 module(
     name = "gazelle_rust",
     version = "0.1.0",
+    bazel_compatibility = [">=7.0.0"],
     repo_name = "gazelle_rust",
 )
 
@@ -36,7 +37,7 @@ register_toolchains("@rust_toolchains//:all")
 bazel_dep(name = "rules_rust_prost", version = "0.67.0")
 
 # Rust dependencies
-crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate", isolate=True)
+crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate", isolate = True)
 crate.from_cargo(
     name = "crates",
     cargo_lockfile = "//:Cargo.lock",
