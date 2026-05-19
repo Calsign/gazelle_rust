@@ -10,9 +10,21 @@ References:
 
 ## Setup
 
-[`example/MODULE.bazel`](./example/MODULE.bazel) shows how to load rules\_rust and gazelle\_rust
-together. In a real project, you would need to use `archive_override` instead of
-`local_path_override`, for example:
+```py
+bazel_dep(name = "gazelle_rust", version = "0.1.0")
+```
+
+See also [`example/MODULE.bazel`](./example/MODULE.bazel) for a full setup.
+
+gazelle\_rust requires rules_rust 0.40.0 or later. Previous versions required a patch to
+rules\_rust.
+
+gazelle\_rust includes a patch to gazelle which allows for reporting unused crate\_universe
+dependencies. If you do not include the patch, everything else will still work fine but unused
+crate\_universe dependencies will not be reported.
+
+If you want to use the tip of main rather than the latest release on the Bazel Central Registery,
+then you can use `archive_override` like this:
 
 ```py
 GAZELLE_RUST_COMMIT = "<commit>"
@@ -27,20 +39,6 @@ archive_override(
     url = "https://github.com/Calsign/gazelle_rust/archive/{}.zip".format(GAZELLE_RUST_COMMIT),
 )
 ```
-
-gazelle\_rust doesn't have any releases yet, so please just pick the latest commit on `main`. To
-determine the sha256, first set the value to `None`, then fill in the sha256 that bazel tells you.
-
-gazelle\_rust requires rules_rust 0.40.0 or later. Previous versions required a patch to
-rules\_rust.
-
-The dependencies for gazelle\_rust itself are loaded through two repository rule macros, shown in
-[`example/MODULE.bazel`](./example/MODULE.bazel). This includes setting up gazelle, but you may use
-a different gazelle version by loading the gazelle repo before calling `gazelle_rust_dependencies*`.
-
-gazelle\_rust includes a patch to gazelle which allows for reporting unused crate\_universe
-dependencies. If you do not include the patch, everything else will still work fine but unused
-crate\_universe dependencies will not be reported.
 
 ## Running gazelle
 
