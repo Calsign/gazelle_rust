@@ -300,14 +300,12 @@ impl DirectiveSet {
 impl<'ast> AstVisitor<'ast> {
     fn cfg_enabled(&self, attrs: &[syn::Attribute]) -> bool {
         for attr in attrs {
-            if let syn::Meta::List(list) = &attr.meta {
-                if list.path.is_ident("cfg") {
-                    if let Ok(meta) = attr.parse_args::<syn::Meta>() {
-                        if !self.eval_cfg_meta(&meta) {
-                            return false;
-                        }
-                    }
-                }
+            if let syn::Meta::List(list) = &attr.meta
+                && list.path.is_ident("cfg")
+                && let Ok(meta) = attr.parse_args::<syn::Meta>()
+                && !self.eval_cfg_meta(&meta)
+            {
+                return false;
             }
         }
         true
@@ -324,12 +322,11 @@ impl<'ast> AstVisitor<'ast> {
             }
 
             syn::Meta::NameValue(nv) => {
-                if nv.path.is_ident("feature") {
-                    if let syn::Expr::Lit(expr_lit) = &nv.value {
-                        if let syn::Lit::Str(lit) = &expr_lit.lit {
-                            return self.enabled_features.contains(lit.value().as_str());
-                        }
-                    }
+                if nv.path.is_ident("feature")
+                    && let syn::Expr::Lit(expr_lit) = &nv.value
+                    && let syn::Lit::Str(lit) = &expr_lit.lit
+                {
+                    return self.enabled_features.contains(lit.value().as_str());
                 }
                 true
             }
@@ -452,16 +449,16 @@ impl<'ast> AstVisitor<'ast> {
                                 self.visit_attr_meta(&derive);
                             }
                         }
-                    } else if ident == "cfg_attr" {
-                        if let Ok(nested) = list.parse_args_with(
+                    } else if ident == "cfg_attr"
+                        && let Ok(nested) = list.parse_args_with(
                             Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
-                        ) {
-                            // grab second child, which is the inner attribute
-                            let mut iter = nested.into_iter();
-                            iter.next();
-                            if let Some(inner) = iter.next() {
-                                self.visit_attr_meta(&inner);
-                            }
+                        )
+                    {
+                        // grab second child, which is the inner attribute
+                        let mut iter = nested.into_iter();
+                        iter.next();
+                        if let Some(inner) = iter.next() {
+                            self.visit_attr_meta(&inner);
                         }
                     }
                 }
@@ -598,10 +595,8 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
             self.inside_use_tree = true;
         }
 
-        if !prev_inside_use_tree {
-            if let syn::UseTree::Rename(rename) = node {
-                self.add_import(&rename.ident);
-            }
+        if !prev_inside_use_tree && let syn::UseTree::Rename(rename) = node {
+            self.add_import(&rename.ident);
         }
 
         visit::visit_use_tree(self, node);
@@ -703,24 +698,17 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
 
         // parse #[cfg(test)]
         for attr in &node.attrs {
-            if let syn::Meta::List(list) = &attr.meta {
-                if let Some(ident) = list.path.get_ident() {
-                    if ident == "cfg" {
-                        if let Ok(nested) = attr.parse_args_with(
-                            Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
-                        ) {
-                            if nested.len() == 1 {
-                                if let syn::Meta::Path(path) = &nested[0] {
-                                    if let Some(ident) = path.get_ident() {
-                                        if ident == "test" {
-                                            is_test_only = true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            if let syn::Meta::List(list) = &attr.meta
+                && let Some(ident) = list.path.get_ident()
+                && ident == "cfg"
+                && let Ok(nested) =
+                    attr.parse_args_with(Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated)
+                && nested.len() == 1
+                && let syn::Meta::Path(path) = &nested[0]
+                && let Some(ident) = path.get_ident()
+                && ident == "test"
+            {
+                is_test_only = true;
             }
         }
 
@@ -752,10 +740,10 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
                         if is_test_attribute(path) {
                             self.hints.has_test = true;
                             is_test_only = true;
-                        } else if let Some(ident) = path.get_ident() {
-                            if ident == "proc_macro" || ident == "proc_macro_attribute" {
-                                self.hints.has_proc_macro = true;
-                            }
+                        } else if let Some(ident) = path.get_ident()
+                            && (ident == "proc_macro" || ident == "proc_macro_attribute")
+                        {
+                            self.hints.has_proc_macro = true;
                         }
                     }
                     _ => {}
@@ -792,12 +780,11 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
 
         let directives = self.parse_directives(&node.attrs);
 
-        if let Some(macro_ident) = node.mac.path.get_ident() {
-            if macro_ident == "macro_rules" {
-                if let Some(new_ident) = &node.ident {
-                    self.add_mod(new_ident);
-                }
-            }
+        if let Some(macro_ident) = node.mac.path.get_ident()
+            && macro_ident == "macro_rules"
+            && let Some(new_ident) = &node.ident
+        {
+            self.add_mod(new_ident);
         }
 
         visit::visit_item_macro(self, node);
@@ -810,31 +797,31 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
     fn visit_macro(&mut self, mac: &'ast syn::Macro) {
         let macro_ident = mac.path.get_ident();
 
-        if let Some(ident) = macro_ident {
-            if ident == "include_str" || ident == "include_bytes" {
-                if self.is_ignored_scope() {
-                    return;
-                }
+        if let Some(ident) = macro_ident
+            && (ident == "include_str" || ident == "include_bytes")
+        {
+            if self.is_ignored_scope() {
+                return;
+            }
 
-                if let Ok(syn::Expr::Lit(syn::ExprLit {
-                    lit: syn::Lit::Str(lit),
-                    ..
-                })) = syn::parse2::<syn::Expr>(mac.tokens.clone())
-                {
-                    let included_path = PathBuf::from(lit.value());
+            if let Ok(syn::Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Str(lit),
+                ..
+            })) = syn::parse2::<syn::Expr>(mac.tokens.clone())
+            {
+                let included_path = PathBuf::from(lit.value());
 
-                    if included_path.is_absolute() {
-                        panic!(
-                            "included paths must not be absolute: {}",
-                            included_path.display()
-                        )
-                    } else {
-                        let combined = self.containing_dir.join(included_path);
-                        match normalize_path(&combined).to_str() {
-                            None => panic!("Invalid unicode in the path: {}", combined.display()),
-                            Some(x) => self.compile_data.insert(x.to_string()),
-                        };
-                    }
+                if included_path.is_absolute() {
+                    panic!(
+                        "included paths must not be absolute: {}",
+                        included_path.display()
+                    )
+                } else {
+                    let combined = self.containing_dir.join(included_path);
+                    match normalize_path(&combined).to_str() {
+                        None => panic!("Invalid unicode in the path: {}", combined.display()),
+                        Some(x) => self.compile_data.insert(x.to_string()),
+                    };
                 }
             }
         }
