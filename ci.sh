@@ -10,6 +10,8 @@ run_group() {
     shift
 
     echo "::group::$name"
+    printf "\n\n====== $name ======\n\n\n"
+
     if "$@"; then
         echo "::endgroup::"
     else
