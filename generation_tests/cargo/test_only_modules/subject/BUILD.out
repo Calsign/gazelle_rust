@@ -1,0 +1,20 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "subject",
+    srcs = [
+        "src/lib.rs",
+        "src/tests.rs",
+    ],
+    compile_data = ["Cargo.toml"],
+    edition = "2021",
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "subject_test",
+    compile_data = ["Cargo.toml"],
+    crate = ":subject",
+    edition = "2021",
+    deps = ["//helper"],
+)
