@@ -8,6 +8,7 @@ struct TestCase {
     expected_imports: Vec<&'static str>,
     expected_test_imports: Vec<&'static str>,
     expected_extern_mods: Vec<&'static str>,
+    expected_test_extern_mods: Vec<&'static str>,
     expected_compile_data: Vec<&'static str>,
 }
 
@@ -46,6 +47,7 @@ lazy_static::lazy_static! {
             ],
             expected_test_imports: vec![],
             expected_extern_mods: vec!["extern_mod"],
+            expected_test_extern_mods: vec![],
             expected_compile_data: vec![
                 "file1.txt",
                 "file2.txt",
@@ -66,6 +68,7 @@ lazy_static::lazy_static! {
                 "f",
             ],
             expected_extern_mods: vec![],
+            expected_test_extern_mods: vec!["test_extern_mod"],
             expected_compile_data: vec![],
         },
         TestCase {
@@ -74,6 +77,7 @@ lazy_static::lazy_static! {
             expected_imports: vec!["ee"],
             expected_test_imports: vec![],
             expected_extern_mods: vec![],
+            expected_test_extern_mods: vec![],
             expected_compile_data: vec![],
         },
         TestCase {
@@ -90,6 +94,7 @@ lazy_static::lazy_static! {
             expected_extern_mods: vec![
                 "extern_mod_2",
             ],
+            expected_test_extern_mods: vec![],
             expected_compile_data: vec![],
         },
         TestCase {
@@ -105,6 +110,7 @@ lazy_static::lazy_static! {
             ],
             expected_test_imports: vec![],
             expected_extern_mods: vec![],
+            expected_test_extern_mods: vec![],
             expected_compile_data: vec![
                 "file1.txt",
                 "file2.txt",
@@ -134,6 +140,7 @@ lazy_static::lazy_static! {
                 "async_std_timeout_dep",
             ],
             expected_extern_mods: vec![],
+            expected_test_extern_mods: vec![],
             expected_compile_data: vec![],
         },
         TestCase {
@@ -142,6 +149,7 @@ lazy_static::lazy_static! {
             expected_imports: vec!["gazelle"],
             expected_test_imports: vec![],
             expected_extern_mods: vec![],
+            expected_test_extern_mods: vec![],
             expected_compile_data: vec![],
         },
     ];
@@ -223,6 +231,15 @@ fn parse_test() -> Result<(), Box<dyn Error>> {
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>(),
             "extern_modes",
+        );
+        assert_eq_vecs(
+            &rust_imports.test_extern_mods,
+            &test_case
+                .expected_test_extern_mods
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>(),
+            "test_extern_mods",
         );
         assert_eq_vecs(
             &rust_imports.compile_data,

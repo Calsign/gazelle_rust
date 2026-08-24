@@ -42,6 +42,7 @@ fn handle_rust_imports_request(
             response.imports = rust_imports.imports;
             response.test_imports = rust_imports.test_imports;
             response.extern_mods = rust_imports.extern_mods;
+            response.test_extern_mods = rust_imports.test_extern_mods;
             response.compile_data = rust_imports.compile_data;
         }
         Err(err) => {

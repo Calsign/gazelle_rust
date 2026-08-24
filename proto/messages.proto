@@ -32,9 +32,10 @@ message RustImportsResponse {
     repeated string imports = 2;
     repeated string test_imports = 3;
     repeated string extern_mods = 4;
-    repeated string compile_data = 5;
-    bool success = 6;
-    string error_msg = 7;
+    repeated string test_extern_mods = 5;
+    repeated string compile_data = 6;
+    bool success = 7;
+    string error_msg = 8;
 }
 
 message LockfileCratesRequest {

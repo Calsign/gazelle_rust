@@ -14,6 +14,9 @@ fn foobar_test(arg: f::X) {
 }
 
 #[cfg(test)]
+mod test_extern_mod;
+
+#[cfg(test)]
 mod tests {
     use c;
 

@@ -95,7 +95,8 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 			crateName = getCrateName(r)
 		}
 
-		for _, response := range ruleData.responses {
+		for _, module := range ruleData.modules {
+			response := module.response
 			var imports []string
 
 			if r.Kind() == "rust_test" {
@@ -103,10 +104,15 @@ func (l *rustLang) Resolve(c *config.Config, ix *resolve.RuleIndex,
 					// this is a standalone test
 					imports = append(response.GetImports(), response.GetTestImports()...)
 				} else {
-					// this is a test associated with another target; don't duplicate the deps
-					imports = response.GetTestImports()
+					// This is a test associated with another target. Imports from ordinary
+					// modules are already dependencies of that target, while ordinary imports
+					// in test-only modules belong to this test.
+					imports = append(imports, response.GetTestImports()...)
+					if module.testOnly {
+						imports = append(imports, response.GetImports()...)
+					}
 				}
-			} else {
+			} else if !module.testOnly {
 				imports = response.GetImports()
 			}
 

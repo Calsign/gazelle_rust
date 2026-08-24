@@ -112,9 +112,14 @@ func (l *rustLang) inferRuleKind(filename string, dirname *string,
 	}
 }
 
+type discoveredModule struct {
+	response *pb.RustImportsResponse
+	testOnly bool
+}
+
 type RuleData struct {
-	rule      *rule.Rule
-	responses []*pb.RustImportsResponse
+	rule    *rule.Rule
+	modules []discoveredModule
 	// if a test crate referring to another crate, that crate; otherwise, nil
 	testedCrate *rule.Rule
 	// the build script of this crate, if any
@@ -207,10 +212,10 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 	// map of crate test rules; key is the non-rust_test rule name that each one refers to
 	testRules := make(map[string]*rule.Rule)
 
-	addRule := func(rule *rule.Rule, responses []*pb.RustImportsResponse) {
+	addRule := func(rule *rule.Rule, modules []discoveredModule) {
 		ruleData := RuleData{
 			rule:        rule,
-			responses:   responses,
+			modules:     modules,
 			testedCrate: nil,
 		}
 
@@ -243,7 +248,7 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 				// reset it. It is probably a bug that Gazelle does not already handle this for us.
 				rule.SetKind(unmappedKind)
 
-				responses := []*pb.RustImportsResponse{}
+				modules := []discoveredModule{}
 
 				enabled_features := []string{}
 				for _, feature := range rule.AttrStrings("crate_features") {
@@ -256,12 +261,12 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 					if strings.HasSuffix(file, ".rs") {
 						response := l.parseFile(args.Config, file, enabled_features, &args)
 						if response != nil {
-							responses = append(responses, response)
+							modules = append(modules, discoveredModule{response: response})
 						}
 					}
 				}
 
-				addRule(rule, responses)
+				addRule(rule, modules)
 			}
 		}
 	}
@@ -284,16 +289,16 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 			rule := rule.NewRule(inferredKind, *ruleName)
 			rule.SetAttr("srcs", []string{file})
 
-			responses := []*pb.RustImportsResponse{response}
+			modules := []discoveredModule{{response: response}}
 
-			addRule(rule, responses)
+			addRule(rule, modules)
 		}
 	}
 
 	for _, ruleData := range nonTestRules {
 		hasTest := false
-		for _, response := range ruleData.responses {
-			if response.Hints.HasTest {
+		for _, module := range ruleData.modules {
+			if module.response.Hints.HasTest {
 				hasTest = true
 			}
 		}
@@ -319,7 +324,7 @@ func (l *rustLang) generateRulesPureBazel(args language.GenerateArgs) language.G
 			result.Gen = append(result.Gen, testRule)
 			result.Imports = append(result.Imports, RuleData{
 				rule:        testRule,
-				responses:   ruleData.responses,
+				modules:     ruleData.modules,
 				testedCrate: ruleData.rule,
 			})
 		} else {
@@ -417,7 +422,7 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 					result.Gen = append(result.Gen, lintsRule)
 					result.Imports = append(result.Imports, RuleData{
 						rule:            lintsRule,
-						responses:       []*pb.RustImportsResponse{},
+						modules:         []discoveredModule{},
 						testedCrate:     nil,
 						buildScript:     nil,
 						parentCrateName: parentCrateName,
@@ -473,8 +478,8 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 		ruleData := imp.(RuleData)
 		if ruleData.rule.Kind() != "rust_test" {
 			hasTest := false
-			for _, response := range ruleData.responses {
-				if response.Hints.HasTest {
+			for _, module := range ruleData.modules {
+				if module.response.Hints.HasTest {
 					hasTest = true
 				}
 			}
@@ -503,7 +508,7 @@ func (l *rustLang) generateRulesFromCargo(args language.GenerateArgs) language.G
 				result.Gen = append(result.Gen, testRule)
 				result.Imports = append(result.Imports, RuleData{
 					rule:            testRule,
-					responses:       ruleData.responses,
+					modules:         ruleData.modules,
 					testedCrate:     ruleData.rule,
 					parentCrateName: parentCrateName,
 					aliases:         dependencyAliases,
@@ -551,26 +556,28 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 	}
 
 	// traverse all files we know about to determine the full module structure
-	importsResponses := map[string]*pb.RustImportsResponse{}
+	roots := []string{}
 	for _, src := range crateInfo.Srcs {
 		// It is possible for declared files to be absent if they are
 		// supposed to be produced by the build script of the crate.
 		if fileExists(src, args) {
-			l.discoverModule(c, src, enabledFeatures, args, &importsResponses, true)
+			roots = append(roots, src)
 		}
 	}
+	modules := l.discoverModules(c, roots, enabledFeatures, args)
 
 	srcs := []string{}
 	compile_data := map[string]bool{"Cargo.toml": true}
-	responses := []*pb.RustImportsResponse{}
+	discovered := []discoveredModule{}
 
-	for src, response := range importsResponses {
+	for src, module := range modules {
+		response := module.response
 		srcs = append(srcs, src)
 		for _, f := range response.CompileData {
 			compile_data[f] = true
 		}
 		if response != nil {
-			responses = append(responses, response)
+			discovered = append(discovered, module)
 		}
 	}
 
@@ -625,7 +632,7 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 	result.Gen = append(result.Gen, newRule)
 	result.Imports = append(result.Imports, RuleData{
 		rule:            newRule,
-		responses:       responses,
+		modules:         discovered,
 		testedCrate:     nil,
 		buildScript:     buildScript,
 		parentCrateName: parentCrateName,
@@ -636,20 +643,19 @@ func (l *rustLang) generateCargoRule(c *config.Config, args *language.GenerateAr
 func (l *rustLang) generateBuildScript(c *config.Config, args *language.GenerateArgs,
 	parentCrateName string, parentCrateEdition string, enabledFeatures []string,
 	dependencyAliases map[string]string, result *language.GenerateResult) {
-	importsResponses := map[string]*pb.RustImportsResponse{}
-	l.discoverModule(c, "build.rs", enabledFeatures, args, &importsResponses, true)
+	modules := l.discoverModules(c, []string{"build.rs"}, enabledFeatures, args)
 
 	srcs := []string{}
 	compile_data := map[string]bool{"Cargo.toml": true}
-	responses := []*pb.RustImportsResponse{}
+	discovered := []discoveredModule{}
 
-	for src, response := range importsResponses {
+	for src, module := range modules {
 		srcs = append(srcs, src)
-		for _, f := range response.CompileData {
-			compile_data[f] = true
-		}
-		if response != nil {
-			responses = append(responses, response)
+		if module.response != nil {
+			for _, f := range module.response.CompileData {
+				compile_data[f] = true
+			}
+			discovered = append(discovered, module)
 		}
 	}
 
@@ -671,55 +677,93 @@ func (l *rustLang) generateBuildScript(c *config.Config, args *language.Generate
 	result.Gen = append(result.Gen, newRule)
 	result.Imports = append(result.Imports, RuleData{
 		rule:            newRule,
-		responses:       responses,
+		modules:         discovered,
 		testedCrate:     nil,
 		parentCrateName: parentCrateName,
 		aliases:         dependencyAliases,
 	})
 }
 
-func (l *rustLang) discoverModule(c *config.Config, file string, enabledFeatures []string, args *language.GenerateArgs,
-	importsResponses *map[string]*pb.RustImportsResponse, isModRoot bool) {
+// discoverModules parses the given root files and every mod reachable from them, returning each
+// parser response along with whether its file is reachable only from tests.
+func (l *rustLang) discoverModules(c *config.Config, roots []string, enabledFeatures []string,
+	args *language.GenerateArgs) map[string]discoveredModule {
 
-	if _, ok := (*importsResponses)[file]; ok {
-		return
+	type pendingModule struct {
+		file      string
+		isModRoot bool
 	}
 
-	response := l.parseFile(c, file, enabledFeatures, args)
-	(*importsResponses)[file] = response
+	modules := map[string]discoveredModule{}
 
-	if response != nil {
-		dirname := filepath.Dir(file)
-		currentModName := strings.TrimSuffix(filepath.Base(file), ".rs")
+	rootModules := []pendingModule{}
+	for _, root := range roots {
+		rootModules = append(rootModules, pendingModule{file: root, isModRoot: true})
+	}
 
-		for _, externMod := range response.ExternMods {
-			var externModPath string
-			var childIsModRoot bool
+	walk := func(queue []pendingModule, deferred *[]pendingModule) {
+		testOnly := deferred == nil
 
-			if isModRoot {
-				// first check for an adjacent file
-				externModPath = filepath.Join(dirname, externMod+".rs")
-				childIsModRoot = false
+		for len(queue) > 0 {
+			current := queue[0]
+			queue = queue[1:]
+			file := current.file
 
-				// then check for an equivalent mod.rs
-				if !fileExists(externModPath, args) {
-					externModPath = filepath.Join(dirname, externMod, "mod.rs")
-					childIsModRoot = true
-				}
-			} else {
-				// look in the subdirectory for the current module
-				externModPath = filepath.Join(dirname, currentModName, externMod+".rs")
-				childIsModRoot = false
+			if _, ok := modules[file]; ok {
+				continue
 			}
-
-			if !fileExists(externModPath, args) {
-				l.Log(c, logWarn, file, "could not find file for mod %s", externMod)
+			response := l.parseFile(c, file, enabledFeatures, args)
+			modules[file] = discoveredModule{response: response, testOnly: testOnly}
+			if response == nil {
 				continue
 			}
 
-			l.discoverModule(c, externModPath, enabledFeatures, args, importsResponses, childIsModRoot)
+			dirname := filepath.Dir(file)
+			currentModName := strings.TrimSuffix(filepath.Base(file), ".rs")
+
+			for _, mod := range declaredMods(response) {
+				externMod := mod.name
+				var externModPath string
+				var childIsModRoot bool
+
+				if current.isModRoot {
+					// first check for an adjacent file
+					externModPath = filepath.Join(dirname, externMod+".rs")
+					childIsModRoot = false
+
+					// then check for an equivalent mod.rs
+					if !fileExists(externModPath, args) {
+						externModPath = filepath.Join(dirname, externMod, "mod.rs")
+						childIsModRoot = true
+					}
+				} else {
+					// look in the subdirectory for the current module
+					externModPath = filepath.Join(dirname, currentModName, externMod+".rs")
+					childIsModRoot = false
+				}
+
+				if !fileExists(externModPath, args) {
+					l.Log(c, logWarn, file, "could not find file for mod %s", externMod)
+					continue
+				}
+
+				child := pendingModule{file: externModPath, isModRoot: childIsModRoot}
+				if mod.isTestOnly && deferred != nil {
+					*deferred = append(*deferred, child)
+				} else {
+					queue = append(queue, child)
+				}
+			}
 		}
 	}
+
+	// Test-only modules wait until everything reachable outside tests has been parsed, so a file
+	// reachable through both kinds of path is classified as an ordinary module.
+	deferred := []pendingModule{}
+	walk(rootModules, &deferred)
+	walk(deferred, nil)
+
+	return modules
 }
 
 func (l *rustLang) parseCargoToml(c *config.Config, file string, args *language.GenerateArgs) *pb.CargoTomlResponse {
@@ -733,6 +777,24 @@ func (l *rustLang) parseCargoToml(c *config.Config, file string, args *language.
 		return nil
 	}
 	return response
+}
+
+// declaredMod is a mod defined in another file, paired with whether its declaration sat behind
+// #[cfg(test)].
+type declaredMod struct {
+	name       string
+	isTestOnly bool
+}
+
+func declaredMods(response *pb.RustImportsResponse) []declaredMod {
+	mods := make([]declaredMod, 0, len(response.ExternMods)+len(response.TestExternMods))
+	for _, name := range response.ExternMods {
+		mods = append(mods, declaredMod{name: name, isTestOnly: false})
+	}
+	for _, name := range response.TestExternMods {
+		mods = append(mods, declaredMod{name: name, isTestOnly: true})
+	}
+	return mods
 }
 
 func fileExists(path string, args *language.GenerateArgs) bool {

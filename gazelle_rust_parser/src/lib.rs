@@ -17,6 +17,7 @@ pub struct RustImports {
     pub imports: Vec<String>,
     pub test_imports: Vec<String>,
     pub extern_mods: Vec<String>,
+    pub test_extern_mods: Vec<String>,
     pub compile_data: Vec<String>,
 }
 
@@ -75,6 +76,7 @@ pub fn parse_imports_from_str(
         imports: filter_imports(root_scope.imports),
         test_imports: filter_imports(root_scope.test_imports),
         extern_mods: visitor.extern_mods.into_iter().collect(),
+        test_extern_mods: visitor.test_extern_mods.into_iter().collect(),
         compile_data: visitor.compile_data.into_iter().collect(),
     })
 }
@@ -205,6 +207,8 @@ struct AstVisitor<'ast> {
     hints: Hints,
     /// bare mods defined in external files
     extern_mods: HashSet<String>,
+    /// bare mods defined in external files that are declared behind `#[cfg(test)]`
+    test_extern_mods: HashSet<String>,
     /// mods that are disallowed from being added to the current scope; this is currently only used
     /// for a hack, see below
     mod_denylist: HashSet<Ident<'ast>>,
@@ -229,6 +233,7 @@ impl AstVisitor<'_> {
             scope_mods: HashSet::default(),
             hints: Hints::default(),
             extern_mods: HashSet::new(),
+            test_extern_mods: HashSet::new(),
             mod_denylist: HashSet::new(),
             enabled_features: enabled_features.iter().cloned().collect(),
             compile_data: HashSet::new(),
@@ -559,6 +564,7 @@ impl<'ast> AstVisitor<'ast> {
             self.mod_denylist.insert(id_copy);
         }
         self.extern_mods = other.extern_mods;
+        self.test_extern_mods = other.test_extern_mods;
         self.compile_data = other.compile_data;
         self.enabled_features = other.enabled_features;
         self.hints.has_main = other.hints.has_main;
@@ -713,8 +719,14 @@ impl<'ast> Visit<'ast> for AstVisitor<'ast> {
         }
 
         if self.is_root_scope() && node.content.is_none() {
+            let extern_mod = node.ident.unraw().to_string();
+
             // this mod is defined in a different file
-            self.extern_mods.insert(node.ident.unraw().to_string());
+            if is_test_only {
+                self.test_extern_mods.insert(extern_mod);
+            } else {
+                self.extern_mods.insert(extern_mod);
+            }
         }
 
         self.add_mod(&node.ident);
